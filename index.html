@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Untuk Nayiii - My Universe 🌌</title>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e);
+            color: white;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* Stars Animation */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        /* Shooting Stars */
+        .shooting-star {
+            position: absolute;
+            top: 20%;
+            left: -100px;
+            width: 100px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, white, transparent);
+            animation: shoot 4s infinite;
+            z-index: 2;
+        }
+
+        .shooting-star:nth-child(2) {
+            top: 40%;
+            animation-delay: 2s;
+        }
+
+        .shooting-star:nth-child(3) {
+            top: 60%;
+            animation-delay: 3s;
+        }
+
+        @keyframes shoot {
+            0% { transform: translateX(0); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateX(calc(100vw + 200px)); opacity: 0; }
+        }
+
+        /* Main Content */
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-align: center;
+            color: white;
+            font-weight: 600;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            letter-spacing: 2px;
+        }
+
+        .love-message {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 600px;
+            text-align: center;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: float 4s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .love-message p {
+            font-size: 1.1em;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            color: white;
+            font-weight: 500;
+        }
+
+        /* Planet 1 - Mars (Red Planet) */
+        .planet-mars {
+            width: 180px;
+            height: 180px;
+            background: radial-gradient(circle at 30% 30%, #ff6b6b, #c92a2a, #862e2e);
+            border-radius: 50%;
+            position: relative;
+            margin: 30px auto;
+            animation: rotate 25s linear infinite;
+            box-shadow: 0 0 60px rgba(255, 107, 107, 0.6);
+        }
+
+        .planet-mars::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 60% 40%, transparent 40%, rgba(139, 69, 19, 0.3) 60%);
+            border-radius: 50%;
+        }
+
+        /* Planet 2 - Earth (Blue Planet) */
+        .planet-earth {
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle at 30% 30%, #74c0fc, #339af0, #1864ab);
+            border-radius: 50%;
+            position: relative;
+            margin: 30px auto;
+            animation: rotate 30s linear infinite;
+            box-shadow: 0 0 70px rgba(116, 192, 252, 0.7);
+        }
+
+        .planet-earth::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 70% 50%, rgba(255, 255, 255, 0.2) 10%, transparent 30%),
+                        radial-gradient(circle at 30% 60%, rgba(34, 139, 34, 0.3) 20%, transparent 40%);
+            border-radius: 50%;
+        }
+
+        /* Planet 3 - Saturn (With Ring) */
+        .planet-saturn {
+            width: 160px;
+            height: 160px;
+            background: radial-gradient(circle at 30% 30%, #ffd43b, #fab005, #f08c00);
+            border-radius: 50%;
+            position: relative;
+            margin: 50px auto;
+            animation: rotate 35s linear infinite;
+            box-shadow: 0 0 80px rgba(255, 212, 59, 0.6);
+        }
+
+        .planet-saturn::after {
+            content: '';
+            position: absolute;
+            width: 250px;
+            height: 250px;
+            border: 25px solid rgba(255, 212, 59, 0.3);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotateX(75deg);
+            box-shadow: 0 0 20px rgba(255, 212, 59, 0.4);
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Mini Game */
+        .game-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 30px;
+            margin-top: 30px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .game-title {
+            font-size: 1.4em;
+            margin-bottom: 20px;
+            color: white;
+            font-weight: 600;
+        }
+
+        .rocket-game {
+            position: relative;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        #rocket {
+            position: absolute;
+            font-size: 40px;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: all 0.3s;
+            animation: hover 1s ease-in-out infinite;
+            z-index: 5;
+        }
+
+        @keyframes hover {
+            0%, 100% { transform: translateY(-50%); }
+            50% { transform: translateY(-55%); }
+        }
+
+        .obstacle {
+            position: absolute;
+            font-size: 30px;
+            animation: moveLeft 3s linear;
+        }
+
+        @keyframes moveLeft {
+            from { right: -50px; }
+            to { right: 100%; }
+        }
+
+        .game-instructions {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            color: white;
+        }
+
+        .game-instructions p {
+            font-weight: 500;
+            margin: 5px 0;
+        }
+
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1em;
+            font-family: 'Quicksand', sans-serif;
+            font-weight: 600;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        #nextPageBtn {
+            display: none;
+            background: linear-gradient(45deg, #f093fb, #f5576c);
+        }
+
+        .score {
+            font-size: 1.2em;
+            margin: 10px 0;
+            color: white;
+            font-weight: 600;
+        }
+
+        /* Hearts */
+        .heart {
+            position: absolute;
+            color: #ff6b6b;
+            font-size: 25px;
+            animation: floatUp 4s linear infinite;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        @keyframes floatUp {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* Pages */
+        .page {
+            display: none;
+            animation: fadeIn 1s;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .final-message {
+            font-size: 1.3em;
+            text-align: center;
+            margin: 30px 0;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            color: white;
+            font-weight: 500;
+            line-height: 1.8;
+        }
+
+        .love-counter {
+            font-size: 3em;
+            color: white;
+            animation: pulse 1s infinite;
+            margin: 20px 0;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        /* Special text effects */
+        .special-text {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #667eea);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <!-- Stars Background -->
+    <div class="stars" id="stars"></div>
+    <div class="shooting-star"></div>
+    <div class="shooting-star"></div>
+    <div class="shooting-star"></div>
+
+    <!-- Page 1 - Mars -->
+    <div class="page active" id="page1">
+        <div class="container">
+            <h1>🚀 Perjalanan ke Planet Pertama</h1>
+            
+            <div class="planet-mars"></div>
+            
+            <div class="love-message">
+                <p>Hai Nayiii sayang... ✨</p>
+                <p>Kita mulai perjalanan dari Planet Mars, planet merah yang melambangkan keberanian.</p>
+                <p>Seperti Mars yang berani bersinar dengan warnanya yang unik,</p>
+                <p>Kamu juga berani mencuri hatiku dengan keunikanmu 💕</p>
+            </div>
+
+            <div class="game-section">
+                <h2 class="game-title">Misi Mars: Kumpulkan Bintang!</h2>
+                
+                <div class="game-instructions">
+                    <p>Klik area game untuk menggerakkan roket 🚀</p>
+                    <p>Tabrak bintang untuk mendapat poin ⭐</p>
+                    <p>Kumpulkan 5 bintang untuk ke planet selanjutnya!</p>
+                </div>
+
+                <div class="score">Bintang: <span id="score1">0</span> / 5</div>
+                
+                <div class="rocket-game" id="gameArea1">
+                    <div id="rocket">🚀</div>
+                </div>
+
+                <button id="startBtn1">Mulai Misi Mars!</button>
+                <button id="nextPageBtn1" onclick="goToPage(2)">Terbang ke Planet Bumi 🌍</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page 2 - Earth -->
+    <div class="page" id="page2">
+        <div class="container">
+            <h1>🌍 Selamat Datang di Planet Bumi</h1>
+            
+            <div class="planet-earth"></div>
+            
+            <div class="love-message">
+                <p>Di Planet Bumi yang indah ini, Nayiii...</p>
+                <p>Tempat di mana kita pertama kali bertemu 💙</p>
+                <p>Dari 7.8 miliar manusia di bumi ini,</p>
+                <p>Hatiku hanya memilih kamu, hanya kamu...</p>
+                <p>Kamu adalah rumahku, tempatku kembali 🏡</p>
+            </div>
+
+            <div class="game-section">
+                <h2 class="game-title">Misi Bumi: Tangkap Cinta!</h2>
+                
+                <div class="game-instructions">
+                    <p>Klik untuk menggerakkan roket dan tangkap hati 💕</p>
+                    <p>Kumpulkan 7 hati untuk melanjutkan perjalanan!</p>
+                </div>
+
+                <div class="score">Hati: <span id="score2">0</span> / 7</div>
+                
+                <div class="rocket-game" id="gameArea2">
+                    <div id="rocket2" style="position: absolute; font-size: 40px; left: 20px; top: 50%; transform: translateY(-50%); animation: hover 1s ease-in-out infinite;">🚀</div>
+                </div>
+
+                <button id="startBtn2">Mulai Misi Bumi!</button>
+                
+                <div class="nav-buttons">
+                    <button onclick="goToPage(1)">Kembali ke Mars</button>
+                    <button id="nextPageBtn2" onclick="goToPage(3)">Lanjut ke Saturnus 🪐</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page 3 - Saturn -->
+    <div class="page" id="page3">
+        <div class="container">
+            <h1>🪐 Planet Terakhir: Saturnus</h1>
+            
+            <div class="planet-saturn"></div>
+            
+            <div class="final-message">
+                <p class="special-text">Nayiii, cinta kita seperti cincin Saturnus...</p>
+                <p>Melingkar abadi, tak terputus, dan selalu indah dipandang ✨</p>
+                <p>Setelah menjelajahi seluruh galaksi bersamamu,</p>
+                <p>Aku sadar bahwa...</p>
+                <p class="love-counter">♾️</p>
+                <p>Cintaku padamu tak terbatas seperti alam semesta</p>
+                <br>
+                <p>Terima kasih sudah menjadi bintang paling terang dalam hidupku 🌟</p>
+                <p>Terima kasih sudah menjadi planet tempat aku pulang 🏠</p>
+                <p>Terima kasih sudah menjadi galaksi tempat aku berpetualang 🌌</p>
+                <br>
+                <p class="special-text">I love you to infinity and beyond, Nayiii! 💕</p>
+            </div>
+
+            <div class="nav-buttons">
+                <button onclick="goToPage(2)">Kembali ke Bumi</button>
+                <button onclick="createManyHearts()">Hujan Cinta! 💕</button>
+                <button onclick="restartJourney()">Mulai Lagi dari Awal</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Music Control
+        const bgMusic = document.getElementById('bgMusic');
+        const musicToggle = document.getElementById('musicToggle');
+        let musicPlaying = false;
+
+        musicToggle.addEventListener('click', function() {
+            if (musicPlaying) {
+                bgMusic.pause();
+                musicToggle.innerHTML = '🎵 Play Music';
+                musicPlaying = false;
+            } else {
+                bgMusic.play().catch(e => {
+                    console.log('Audio play failed:', e);
+                    // Try to play after user interaction
+                });
+                musicToggle.innerHTML = '🔇 Pause Music';
+                musicPlaying = true;
+            }
+        });
+
+        // Auto-play music on first user interaction
+        document.addEventListener('click', function() {
+            if (!musicPlaying && bgMusic.paused) {
+                bgMusic.play().catch(e => console.log('Autoplay prevented'));
+                musicToggle.innerHTML = '🔇 Pause Music';
+                musicPlaying = true;
+            }
+        }, { once: true });
+
+        // Create stars
+        function createStars() {
+            const starsContainer = document.getElementById('stars');
+            for (let i = 0; i < 150; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = Math.random() * 3 + 's';
+                starsContainer.appendChild(star);
+            }
+        }
+
+        createStars();
+
+        // Page navigation
+        function goToPage(pageNum) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById('page' + pageNum).classList.add('active');
+        }
+
+        // Game 1 - Mars
+        let score1 = 0;
+        let gameActive1 = false;
+        const gameArea1 = document.getElementById('gameArea1');
+        const rocket1 = document.getElementById('rocket');
+        const scoreDisplay1 = document.getElementById('score1');
+        const startBtn1 = document.getElementById('startBtn1');
+        const nextPageBtn1 = document.getElementById('nextPageBtn1');
+
+        startBtn1.addEventListener('click', function() {
+            score1 = 0;
+            scoreDisplay1.textContent = score1;
+            gameActive1 = true;
+            startBtn1.style.display = 'none';
+            spawnStar1();
+        });
+
+        gameArea1.addEventListener('click', function(e) {
+            if (!gameActive1) return;
+            const rect = gameArea1.getBoundingClientRect();
+            const y = e.clientY - rect.top;
+            rocket1.style.top = y + 'px';
+            rocket1.style.transform = 'translateY(-50%)';
+        });
+
+        function spawnStar1() {
+            if (!gameActive1) return;
+
+            const star = document.createElement('div');
+            star.textContent = '⭐';
+            star.className = 'obstacle';
+            star.style.top = Math.random() * 80 + 10 + '%';
+            star.style.right = '-50px';
+            gameArea1.appendChild(star);
+
+            const checkCollision = setInterval(() => {
+                const starRect = star.getBoundingClientRect();
+                const rocketRect = rocket1.getBoundingClientRect();
+
+                if (starRect.left < rocketRect.right &&
+                    starRect.right > rocketRect.left &&
+                    starRect.top < rocketRect.bottom &&
+                    starRect.bottom > rocketRect.top) {
+                    score1++;
+                    scoreDisplay1.textContent = score1;
+                    star.remove();
+                    clearInterval(checkCollision);
+                    createFloatingHeart();
+
+                    if (score1 >= 5) {
+                        gameActive1 = false;
+                        nextPageBtn1.style.display = 'inline-block';
+                        alert('Misi Mars berhasil! Lanjut ke Planet Bumi! 🌍');
+                    }
+                }
+
+                if (starRect.right < 0) {
+                    star.remove();
+                    clearInterval(checkCollision);
+                }
+            }, 50);
+
+            if (gameActive1 && score1 < 5) {
+                setTimeout(spawnStar1, 2000);
+            }
+        }
+
+        // Game 2 - Earth
+        let score2 = 0;
+        let gameActive2 = false;
+        const gameArea2 = document.getElementById('gameArea2');
+        const rocket2 = document.getElementById('rocket2');
+        const scoreDisplay2 = document.getElementById('score2');
+        const startBtn2 = document.getElementById('startBtn2');
+        const nextPageBtn2 = document.getElementById('nextPageBtn2');
+
+        startBtn2.addEventListener('click', function() {
+            score2 = 0;
+            scoreDisplay2.textContent = score2;
+            gameActive2 = true;
+            startBtn2.style.display = 'none';
+            spawnHeart2();
+        });
+
+        gameArea2.addEventListener('click', function(e) {
+            if (!gameActive2) return;
+            const rect = gameArea2.getBoundingClientRect();
+            const y = e.clientY - rect.top;
+            rocket2.style.top = y + 'px';
+            rocket2.style.transform = 'translateY(-50%)';
+        });
+
+        function spawnHeart2() {
+            if (!gameActive2) return;
+
+            const heart = document.createElement('div');
+            heart.textContent = '💕';
+            heart.className = 'obstacle';
+            heart.style.top = Math.random() * 80 + 10 + '%';
+            heart.style.right = '-50px';
+            gameArea2.appendChild(heart);
+
+            const checkCollision = setInterval(() => {
+                const heartRect = heart.getBoundingClientRect();
+                const rocketRect = rocket2.getBoundingClientRect();
+
+                if (heartRect.left < rocketRect.right &&
+                    heartRect.right > rocketRect.left &&
+                    heartRect.top < rocketRect.bottom &&
+                    heartRect.bottom > rocketRect.top) {
+                    score2++;
+                    scoreDisplay2.textContent = score2;
+                    heart.remove();
+                    clearInterval(checkCollision);
+                    createFloatingHeart();
+
+                    if (score2 >= 7) {
+                        gameActive2 = false;
+                        nextPageBtn2.style.display = 'inline-block';
+                        alert('Misi Bumi selesai! Mari ke Saturnus! 🪐');
+                    }
+                }
+
+                if (heartRect.right < 0) {
+                    heart.remove();
+                    clearInterval(checkCollision);
+                }
+            }, 50);
+
+            if (gameActive2 && score2 < 7) {
+                setTimeout(spawnHeart2, 1500);
+            }
+        }
+
+        // Create floating hearts
+        function createFloatingHeart() {
+            const heart = document.createElement('div');
+            heart.className = 'heart';
+            heart.textContent = '💕';
+            heart.style.left = Math.random() * 100 + '%';
+            heart.style.animationDuration = (Math.random() * 3 + 2) + 's';
+            document.body.appendChild(heart);
+            setTimeout(() => heart.remove(), 5000);
+        }
+
+        function createManyHearts() {
+            for (let i = 0; i < 10; i++) {
+                setTimeout(createFloatingHeart, i * 200);
+            }
+        }
+
+        function restartJourney() {
+            goToPage(1);
+            score1 = 0;
+            score2 = 0;
+            scoreDisplay1.textContent = '0';
+            scoreDisplay2.textContent = '0';
+            document.getElementById('startBtn1').style.display = 'inline-block';
+            document.getElementById('startBtn2').style.display = 'inline-block';
+            nextPageBtn1.style.display = 'none';
+            nextPageBtn2.style.display = 'none';
+            gameActive1 = false;
+            gameActive2 = false;
+            loveBar.style.width = '0%';
+            bigHeart.style.color = '#ff6b6b';
+        }
+
+        // Random hearts
+        setInterval(() => {
+            if (Math.random() > 0.8) {
+                createFloatingHeart();
+            }
+        }, 4000);
+    </script>
+</body>
+</html>
