@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffffff">
+<title>ESP32 OLED Controller</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --white:#ffffff; --bg:#f5f6f8; --surface:#ffffff;
+  --surface2:#f0f2f5; --surface3:#e8eaee;
+  --border:#e4e7ed; --border2:#d0d5de;
+  --text:#1a1d23; --text2:#52576a; --text3:#9299ab;
+  --accent:#3b5bdb; --accent-light:#eef1fd; --accent-hover:#3351c9;
+  --green:#2f9e44; --green-light:#ebf7ee;
+  --orange:#e67700; --orange-light:#fff8ee;
+  --red:#c92a2a; --red-light:#fef2f2;
+  --oled-bg:#050505; --oled-px:#ffffff;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
+  --shadow:0 4px 16px rgba(0,0,0,0.08),0 1px 4px rgba(0,0,0,0.04);
+  --radius:10px; --radius-sm:6px; --radius-lg:16px;
+  --nav-h:56px; --bottom-h:68px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;line-height:1.5;display:flex;flex-direction:column;}
+
+/* ── TOP NAV ── */
+.topnav{
+  height:var(--nav-h); background:var(--white); border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;padding:0 16px;
+  position:fixed;top:0;left:0;right:0;z-index:100;flex-shrink:0;
+}
+.tnav-logo{display:flex;align-items:center;gap:10px;}
+.tnav-mark{width:30px;height:30px;background:var(--text);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.tnav-name{font-weight:700;font-size:15px;letter-spacing:-0.3px;}
+.tnav-right{display:flex;align-items:center;gap:10px;}
+.ble-pill{
+  display:flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:20px;background:var(--surface2);
+  font-size:12px;font-weight:500;color:var(--text3);cursor:pointer;
+  border:1px solid var(--border); transition:all 0.2s;
+}
+.ble-pill:hover{background:var(--surface3);}
+.ble-pill.connected{background:var(--green-light);color:var(--green);border-color:#b8e8c2;}
+.ble-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0;transition:all 0.3s;}
+.ble-pill.connected .ble-dot{background:var(--green);animation:pulse 2s infinite;}
+.ble-pill.connecting .ble-dot{background:var(--accent);animation:pulse 0.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+/* ── SCROLL AREA ── */
+.scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;padding-top:var(--nav-h);padding-bottom:calc(var(--bottom-h)+8px);-webkit-overflow-scrolling:touch;}
+.scroll-area::-webkit-scrollbar{width:3px;}
+.scroll-area::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+/* ── TABS ── */
+.tab-bar{
+  background:var(--white);border-top:1px solid var(--border);
+  height:var(--bottom-h);
+  position:fixed;bottom:0;left:0;right:0;z-index:100;
+  display:flex;align-items:flex-start;padding:0 4px;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.tab{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:10px 4px 6px;cursor:pointer;transition:color 0.2s;
+  color:var(--text3);user-select:none;border-radius:var(--radius-sm);
+  margin-top:4px;
+}
+.tab:active{background:var(--surface2);}
+.tab.active{color:var(--accent);}
+.tab-icon{font-size:20px;line-height:1;}
+.tab-label{font-size:10px;font-weight:500;letter-spacing:0.2px;}
+
+.panel{display:none;padding:16px;}
+.panel.active{display:block;}
+
+/* ── CARDS ── */
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:14px;box-shadow:var(--shadow-sm);}
+.card-title{font-size:12.5px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+.card-title-icon{font-size:15px;}
+
+/* ── OLED CANVAS PREVIEW ── */
+.oled-wrap{display:flex;justify-content:center;padding:4px 0 8px;}
+.oled-frame{
+  background:#050505;border-radius:10px;padding:10px;
+  border:1.5px solid #333;
+  box-shadow:0 2px 12px rgba(0,0,0,0.3);
+  position:relative;
+}
+.oled-frame::before{
+  content:'OLED 128×64';position:absolute;top:-18px;left:50%;transform:translateX(-50%);
+  font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text3);letter-spacing:1px;white-space:nowrap;
+}
+#oled-canvas{display:block;image-rendering:pixelated;border-radius:3px;}
+
+/* ── BLE CONNECT ── */
+.connect-btn{
+  width:100%;padding:13px;border:none;border-radius:var(--radius);
+  font-family:'Inter',sans-serif;font-size:14px;font-weight:600;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
+  transition:all 0.2s;letter-spacing:-0.1px;
+  background:var(--accent);color:white;
+}
+.connect-btn:hover{background:var(--accent-hover);}
+.connect-btn:active{transform:scale(0.98);}
+.connect-btn.connected{background:var(--red);color:white;}
+.connect-btn:disabled{opacity:0.5;cursor:not-allowed;}
+
+/* ── CLOCK ── */
+.clock-face{
+  text-align:center;padding:18px 12px;border-radius:var(--radius);
+  background:#050505;border:1px solid #222;
+}
+.clock-time{font-family:'JetBrains Mono',monospace;font-size:2.6rem;font-weight:600;letter-spacing:5px;color:#fff;text-shadow:0 0 20px rgba(255,255,255,0.5);}
+.clock-date{font-family:'JetBrains Mono',monospace;font-size:11px;color:#555;margin-top:5px;letter-spacing:1px;}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;}
+.toggle-label{font-size:13.5px;font-weight:500;color:var(--text);}
+.toggle-sub{font-size:12px;color:var(--text3);margin-top:1px;}
+
+.toggle{width:44px;height:24px;border-radius:12px;background:var(--border2);cursor:pointer;position:relative;transition:background 0.25s;border:none;outline:none;flex-shrink:0;}
+.toggle.on{background:var(--accent);}
+.toggle::after{content:'';position:absolute;width:18px;height:18px;background:white;border-radius:50%;top:3px;left:3px;transition:left 0.25s;box-shadow:0 1px 4px rgba(0,0,0,0.25);}
+.toggle.on::after{left:23px;}
+
+/* ── INPUTS ── */
+.input{width:100%;background:var(--white);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-family:'Inter',sans-serif;font-size:13.5px;color:var(--text);outline:none;transition:border-color 0.15s;}
+.input:focus{border-color:var(--accent);}
+.input::placeholder{color:var(--text3);}
+textarea.input{resize:none;line-height:1.5;}
+
+.char-count{text-align:right;font-size:11px;color:var(--text3);margin-top:3px;}
+
+.field-label{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:6px;display:block;}
+
+.dur-row{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;}
+.dur-row label{font-size:12.5px;color:var(--text2);}
+.input-num{width:68px;background:var(--white);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 8px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text);outline:none;text-align:center;}
+.input-num:focus{border-color:var(--accent);}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 18px;border-radius:var(--radius-sm);font-family:'Inter',sans-serif;font-size:13.5px;font-weight:600;border:1px solid transparent;cursor:pointer;transition:all 0.15s;letter-spacing:-0.1px;white-space:nowrap;}
+.btn:active{transform:scale(0.97);}
+.btn:disabled{opacity:0.45;cursor:not-allowed;transform:none;}
+.btn-primary{background:var(--accent);color:white;border-color:var(--accent);}
+.btn-primary:hover:not(:disabled){background:var(--accent-hover);}
+.btn-success{background:var(--green);color:white;}
+.btn-success:hover:not(:disabled){background:#287a3b;}
+.btn-outline{background:white;color:var(--text);border-color:var(--border2);}
+.btn-outline:hover:not(:disabled){background:var(--surface2);}
+.btn-ghost{background:transparent;color:var(--text2);border-color:transparent;}
+.btn-ghost:hover:not(:disabled){background:var(--surface2);color:var(--text);}
+.btn-full{width:100%;margin-top:10px;}
+.btn-sm{padding:7px 13px;font-size:12.5px;}
+
+/* ── EMOTICON GRID ── */
+.emote-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.emote-tile{
+  border:1.5px solid var(--border);border-radius:var(--radius);
+  padding:10px 4px;text-align:center;cursor:pointer;
+  transition:all 0.18s;background:var(--white);
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+}
+.emote-tile:hover{border-color:var(--accent);background:var(--accent-light);transform:translateY(-1px);}
+.emote-tile:active{transform:scale(0.93);}
+.emote-tile.selected{border-color:var(--accent);background:var(--accent-light);}
+.emote-preview-box{width:44px;height:44px;background:#060606;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px solid #222;}
+.emote-preview-box canvas{image-rendering:pixelated;}
+.emote-tile-name{font-size:10px;font-weight:500;color:var(--text2);}
+.emote-tile.selected .emote-tile-name{color:var(--accent);}
+
+/* ── IMAGE ── */
+.img-picker{
+  width:100%;aspect-ratio:2/1;background:var(--surface2);
+  border:2px dashed var(--border2);border-radius:var(--radius);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;overflow:hidden;transition:border-color 0.2s;
+  position:relative;
+}
+.img-picker:hover{border-color:var(--accent);}
+.img-picker img{width:100%;height:100%;object-fit:contain;position:absolute;inset:0;}
+.img-picker-placeholder{font-size:12.5px;color:var(--text3);text-align:center;padding:16px;}
+.img-picker-placeholder .pick-icon{font-size:28px;display:block;margin-bottom:8px;}
+
+input[type="range"]{-webkit-appearance:none;width:100%;height:5px;background:var(--border);border-radius:3px;outline:none;margin:8px 0;}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;background:var(--accent);border-radius:50%;cursor:pointer;}
+
+.mono-wrap{display:flex;justify-content:center;margin-top:10px;}
+#mono-canvas{image-rendering:pixelated;border-radius:6px;border:1px solid var(--border);background:#050505;}
+
+/* ── NOTIFICATIONS ── */
+.alert{padding:10px 14px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:10px;border-left:3px solid;display:flex;align-items:flex-start;gap:8px;}
+.alert-info{background:var(--accent-light);border-color:var(--accent);color:var(--accent);}
+.alert-warn{background:var(--orange-light);border-color:var(--orange);color:var(--orange);}
+.alert-success{background:var(--green-light);border-color:var(--green);color:var(--green);}
+
+.notif-log{background:#0d1117;border-radius:var(--radius-sm);padding:10px 12px;height:110px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#56d364;line-height:1.8;border:1px solid #21262d;}
+.notif-log::-webkit-scrollbar{width:3px;}
+.notif-log::-webkit-scrollbar-thumb{background:#30363d;border-radius:2px;}
+
+/* ── STATUS BAR ── */
+.status-bar{
+  background:var(--white);border-top:1px solid var(--border);
+  position:fixed;bottom:var(--bottom-h);left:0;right:0;z-index:99;
+  padding:5px 14px;display:flex;align-items:center;gap:7px;
+  font-size:11.5px;color:var(--text3);font-family:'JetBrains Mono',monospace;
+}
+.status-bar-dot{width:6px;height:6px;border-radius:50%;background:var(--text3);}
+.status-bar-dot.ok{background:var(--green);}
+
+/* ── CONN PAGE ── */
+.conn-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+.conn-info-item{background:var(--surface2);border-radius:var(--radius-sm);padding:10px;font-size:12px;}
+.conn-info-label{color:var(--text3);margin-bottom:3px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.5px;}
+.conn-info-val{color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11.5px;word-break:break-all;}
+
+@media(max-width:400px){.emote-grid{grid-template-columns:repeat(3,1fr);}}
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<div class="topnav">
+  <div class="tnav-logo">
+    <div class="tnav-mark">📟</div>
+    <div class="tnav-name">ESP32 OLED</div>
+  </div>
+  <div class="tnav-right">
+    <div class="ble-pill" id="ble-pill" onclick="toggleBLE()">
+      <span class="ble-dot" id="ble-dot"></span>
+      <span id="ble-pill-text">Hubungkan</span>
+    </div>
+  </div>
+</div>
+
+<!-- SCROLL AREA -->
+<div class="scroll-area" id="scroll-area">
+
+  <!-- ═══ PANEL: CONNECT ═══ -->
+  <div class="panel active" id="panel-connect">
+
+    <!-- OLED Preview -->
+    <div class="card">
+      <div style="font-size:10px;font-weight:600;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:14px;">Pratinjau OLED Virtual</div>
+      <div class="oled-wrap">
+        <div class="oled-frame">
+          <canvas id="oled-canvas" width="256" height="128" style="width:256px;height:128px;"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- BLE Connect -->
+    <div class="card">
+      <div class="card-title"><span class="card-title-icon">📡</span>Bluetooth BLE</div>
+      <div class="alert alert-info" id="ble-tip">Pastikan Bluetooth aktif dan ESP32 sudah menyala. Gunakan Chrome Android.</div>
+      <button class="connect-btn" id="btn-ble-main" onclick="toggleBLE()">
+        <span id="btn-ble-icon">📡</span>
+        <span id="btn-ble-text">Hubungkan ke ESP32</span>
+      </button>
+      <div id="ble-device-label" style="font-size:12px;color:var(--text3);text-align:center;margin-top:8px;font-family:'JetBrains Mono',monospace;"></div>
+    </div>
+
+    <!-- Conn Info -->
+    <div class="card">
+      <div class="card-title"><span class="card-title-icon">ℹ️</span>Info Koneksi</div>
+      <div class="conn-info-grid">
+        <div class="conn-info-item"><div class="conn-info-label">Service UUID</div><div class="conn-info-val">…789012</div></div>
+        <div class="conn-info-item"><div class="conn-info-label">RX Char (Write)</div><div class="conn-info-val">…789013</div></div>
+        <div class="conn-info-item"><div class="conn-info-label">TX Char (Notify)</div><div class="conn-info-val">…789014</div></div>
+        <div class="conn-info-item"><div class="conn-info-label">Status</div><div class="conn-info-val" id="info-status">Tidak terhubung</div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ PANEL: CLOCK ═══ -->
+  <div class="panel" id="panel-clock">
+    <div class="card">
+      <div class="card-title"><span class="card-title-icon">🕐</span>Jam Real-Time</div>
+      <div class="clock-face">
+        <div class="clock-time" id="clock-time">--:--:--</div>
+        <div class="clock-date" id="clock-date">Memuat tanggal...</div>
+      </div>
+      <div class="toggle-row" style="margin-top:14px">
+        <div>
+          <div class="toggle-label">Tampilkan jam di OLED</div>
+          <div class="toggle-sub" id="clock-sub">Jam dikirim via BLE setiap detik</div>
+        </div>
+        <button class="toggle" id="toggle-clock" onclick="toggleClock()"></button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="card-title-icon">ℹ️</span>Tentang Fitur Jam</div>
+      <div style="font-size:13px;color:var(--text2);line-height:2">
+        Jam diambil dari zona waktu ponsel dan dikirim ke OLED melalui BLE setiap detik.<br>
+        Format: <code style="font-family:'JetBrains Mono',monospace">HH:MM:SS</code> (24 jam).<br>
+        OLED akan terus menampilkan jam terakhir meski koneksi terputus.
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PANEL: TEXT ═══ -->
+  <div class="panel" id="panel-text">
+    <div class="card">
+      <div class="card-title"><span class="card-title-icon">✏️</span>Kirim Teks ke OLED</div>
+      <label class="field-label">Pesan teks (max 120 karakter)</label>
+      <textarea class="input" id="text-msg" rows="4" maxlength="120" placeholder="Ketik pesan yang akan tampil di layar OLED..." oninput="onTextInput()"></textarea>
+      <div class="char-count"><span id="text-count">0</span>/120</div>
+      <div class="dur-row">
+        <label>Durasi tampil:</label>
+        <input type="number" class="input-num" id="text-dur" value="10" min="1" max="3600">
+        <span style="font-size:12.5px;color:var(--text3)">detik</span>
+        <select id="text-size" style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-family:'Inter',sans-serif;font-size:12.5px;color:var(--text);outline:none;margin-left:auto;">
+          <option value="1">Font Kecil</option>
+          <option value="2" selected>Font Sedang</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="sendText()">✉️ Kirim ke OLED</button>
+    </div>
+  </div>
+
+  <!-- ═══ PANEL: EMOTICON ═══ -->
+  <div class="panel" id="panel-emote">
+    <div class="card">
+      <div class="card-title"><span class="card-title-icon">😊</span>Pilih Emotikon</div>
+      <div class="emote-grid" id="emote-grid"></div>
+      <div class="dur-row" style="margin-top:14px">
+        <label>Durasi tampil:</label>
+        <input type="number" class="input-num" id="emote-dur" value="5" min="1" max="60">
+        <span style="font-size:12.5px;color:var(--text3)">detik</span>
+        <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="sendEmoticon()">Kirim</button>
+      </div>
+    </div>
+
+    <!-- OLED preview for selected emote -->
+    <div class="card">
+      <div class="card-title"><span class="card-title-icon">🖥️</span>Pratinjau OLED</div>
+      <div class="oled-wrap" style="margin-bottom:0">
+        <div class="oled-frame">
+          <canvas id="emote-oled-canvas" width="256" height="128" style="width:256px;height:128px;"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PANEL: IMAGE ═══ -->
+  <div class="panel" id="panel-image">
+    <div class="card">
+      <div class="card-title"><span class="card-title-icon">🖼️</span>Upload Gambar dari Galeri</div>
+      <input type="file" id="img-file" accept="image/*" style="display:none" onchange="loadImage(event)">
+      <div class="img-picker" onclick="document.getElementById('img-file').click()" id="img-picker">
+        <img id="img-preview" src="" alt="" style="display:none">
+        <div class="img-picker-placeholder" id="img-placeholder">
+          <span class="pick-icon">📷</span>
+          Tap untuk pilih foto dari galeri<br>
+          <span style="font-size:11px;color:var(--text3)">JPG · PNG · GIF · WebP</span>
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:12px;color:var(--text2);font-weight:500">Threshold hitam/putih</span>
+          <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent)" id="thresh-val">128</span>
+        </div>
+        <input type="range" id="threshold" min="0" max="255" value="128" oninput="updateThreshold()">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="card-title-icon">🔲</span>Pratinjau Monokrom 128×64</div>
+      <div class="mono-wrap">
+        <canvas id="mono-canvas" width="256" height="128" style="width:256px;height:128px;"></canvas>
+      </div>
+      <canvas id="work-canvas" width="128" height="64" style="display:none"></canvas>
+
+      <div class="dur-row" style="margin-top:14px">
+        <label>Durasi tampil:</label>
+        <input type="number" class="input-num" id="img-dur" value="10" min="1" max="3600">
+        <span style="font-size:12.5px;color:var(--text3)">detik</span>
+      </div>
+      <button class="btn btn-success btn-full" onclick="sendImage()">🖼️ Kirim Gambar ke OLED</button>
+    </div>
+  </div>
+
+  <!-- ═══ PANEL: NOTIF ═══ -->
+  <div class="panel" id="panel-notif">
+    <div class="card">
+      <div class="card-title"><span class="card-title-icon">🔔</span>Izin Notifikasi HP</div>
+      <div class="alert" id="notif-perm-alert" style="background:var(--orange-light);border-color:var(--orange);color:var(--orange)">⚠️ Izin notifikasi belum diberikan.</div>
+      <button class="btn btn-primary btn-full" onclick="requestNotifPerm()">🔔 Minta Izin Notifikasi</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="card-title-icon">📤</span>Teruskan ke OLED</div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Aktifkan penerusan</div>
+          <div class="toggle-sub">Notifikasi HP → OLED via BLE</div>
+        </div>
+        <button class="toggle" id="toggle-notif" onclick="toggleNotif()"></button>
+      </div>
+      <div class="dur-row">
+        <label>Durasi tampil notifikasi:</label>
+        <input type="number" class="input-num" id="notif-dur" value="8" min="1" max="60">
+        <span style="font-size:12.5px;color:var(--text3)">detik</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="card-title-icon">🧪</span>Test Notifikasi</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" onclick="sendTestNotif('WhatsApp','Pesan baru dari Andi 👋')">💬 WhatsApp</button>
+        <button class="btn btn-outline btn-sm" onclick="sendTestNotif('Instagram','Suka foto kamu!')">📷 IG</button>
+        <button class="btn btn-outline btn-sm" onclick="sendTestNotif('Gmail','Email baru: Meeting update')">📧 Gmail</button>
+        <button class="btn btn-outline btn-sm" onclick="sendTestNotif('Alarm','⏰ Waktunya bangun!')">⏰ Alarm</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="card-title-icon">📜</span>Log Notifikasi</div>
+      <div class="notif-log" id="notif-log">— Belum ada notifikasi —<br></div>
+    </div>
+  </div>
+
+</div><!-- end scroll-area -->
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <span class="status-bar-dot" id="status-dot"></span>
+  <span id="status-text">Siap · Hubungkan BLE untuk mulai</span>
+</div>
+
+<!-- BOTTOM TAB BAR -->
+<div class="tab-bar">
+  <div class="tab active" data-panel="panel-connect" onclick="goPanel('panel-connect',this)">
+    <span class="tab-icon">🔗</span><span class="tab-label">Koneksi</span>
+  </div>
+  <div class="tab" data-panel="panel-clock" onclick="goPanel('panel-clock',this)">
+    <span class="tab-icon">🕐</span><span class="tab-label">Jam</span>
+  </div>
+  <div class="tab" data-panel="panel-text" onclick="goPanel('panel-text',this)">
+    <span class="tab-icon">✏️</span><span class="tab-label">Teks</span>
+  </div>
+  <div class="tab" data-panel="panel-emote" onclick="goPanel('panel-emote',this)">
+    <span class="tab-icon">😊</span><span class="tab-label">Emote</span>
+  </div>
+  <div class="tab" data-panel="panel-image" onclick="goPanel('panel-image',this)">
+    <span class="tab-icon">🖼️</span><span class="tab-label">Gambar</span>
+  </div>
+  <div class="tab" data-panel="panel-notif" onclick="goPanel('panel-notif',this)">
+    <span class="tab-icon">🔔</span><span class="tab-label">Notif</span>
+  </div>
+</div>
+
+<script>
+// ─── BLE CONFIG ───
+const SVC  = '12345678-1234-1234-1234-123456789012';
+const RX   = '12345678-1234-1234-1234-123456789013';
+const TX   = '12345678-1234-1234-1234-123456789014';
+let bleDevice=null, rxChar=null, txChar=null, isConn=false;
+let clockActive=false, notifActive=false, notifPerm='default';
+let selectedEmote = 'smile';
+let sourceImg = null;
+
+// ─── TAB NAVIGATION ───
+function goPanel(panelId, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(panelId).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('scroll-area').scrollTop = 0;
+}
+
+// ─── OLED CANVAS ───
+const oledCtx = document.getElementById('oled-canvas').getContext('2d');
+const emoteCtx = document.getElementById('emote-oled-canvas').getContext('2d');
+const S = 256, SH = 128; // canvas size (2x scale)
+
+function clearOLED(ctx) {
+  ctx.fillStyle = '#050505';
+  ctx.fillRect(0, 0, S, SH);
+}
+clearOLED(oledCtx);
+clearOLED(emoteCtx);
+
+function drawOLEDText(ctx, text) {
+  clearOLED(ctx);
+  ctx.fillStyle = '#fff';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'left';
+  const max = 21;
+  let y = 14;
+  for (let i = 0; i < text.length; i += max) {
+    ctx.fillText(text.slice(i, i+max), 2, y);
+    y += 12;
+    if (y > SH-2) break;
+  }
+}
+
+function drawOLEDClock(ctx, t) {
+  clearOLED(ctx);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 28px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(t, S/2, SH/2+9);
+  ctx.font = '9px monospace';
+  ctx.fillStyle = '#444';
+  ctx.fillText('LIVE CLOCK', S/2, SH-8);
+  ctx.textAlign = 'left';
+}
+
+function drawOLEDEmote(ctx, name) {
+  clearOLED(ctx);
+  const em = EMOTICONS.find(e => e.id === name);
+  if (!em) return;
+  // Draw centered, larger version (128x128 in 256x128 canvas, centered)
+  const sz = SH; // use full height
+  const offX = (S - sz) / 2;
+  // create temp canvas
+  const tmp = document.createElement('canvas');
+  tmp.width = sz; tmp.height = sz;
+  const tc = tmp.getContext('2d');
+  tc.fillStyle = '#050505';
+  tc.fillRect(0,0,sz,sz);
+  em.draw(tc, sz);
+  ctx.drawImage(tmp, offX, 0, sz, sz);
+}
+
+// ─── EMOTICON PIXEL ART ───
+const EMOTICONS = [
+  {id:'smile',    name:'Senyum',   draw:drawSmile},
+  {id:'sad',      name:'Sedih',    draw:drawSad},
+  {id:'heart',    name:'Hati',     draw:drawHeart},
+  {id:'thumbsup', name:'Jempol',   draw:drawThumbsup},
+  {id:'star',     name:'Bintang',  draw:drawStar},
+  {id:'lightning',name:'Petir',    draw:drawLightning},
+  {id:'sleep',    name:'Tidur',    draw:drawSleep},
+  {id:'angry',    name:'Marah',    draw:drawAngry},
+  {id:'cool',     name:'Keren',    draw:drawCool},
+  {id:'wink',     name:'Kedip',    draw:drawWink},
+  {id:'surprised',name:'Kaget',   draw:drawSurprised},
+  {id:'cry',      name:'Nangis',   draw:drawCry},
+];
+
+function circleFace(ctx, s, opts={}) {
+  const cx=s/2, cy=s/2, r=s*0.42;
+  ctx.strokeStyle='#fff'; ctx.lineWidth=s*0.04;
+  ctx.beginPath(); ctx.arc(cx,cy,r-ctx.lineWidth/2,0,Math.PI*2); ctx.stroke();
+  return {cx,cy,r};
+}
+
+function drawSmile(ctx,s) {
+  const {cx,cy}=circleFace(ctx,s);
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.arc(cx-s*.14,cy-s*.1,s*.05,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+s*.14,cy-s*.1,s*.05,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#fff'; ctx.lineWidth=s*.04;
+  ctx.beginPath(); ctx.arc(cx,cy+s*.05,s*.18,0.15,Math.PI-0.15); ctx.stroke();
+}
+function drawSad(ctx,s) {
+  const {cx,cy}=circleFace(ctx,s);
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.arc(cx-s*.14,cy-s*.08,s*.05,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+s*.14,cy-s*.08,s*.05,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#fff'; ctx.lineWidth=s*.04;
+  ctx.beginPath(); ctx.arc(cx,cy+s*.28,s*.18,Math.PI+0.15,-0.15); ctx.stroke();
+}
+function drawHeart(ctx,s) {
+  const cx=s/2, cy=s/2+s*.02;
+  ctx.strokeStyle='#fff'; ctx.fillStyle='#fff'; ctx.lineWidth=s*.04;
+  ctx.beginPath();
+  ctx.moveTo(cx,cy+s*.32);
+  ctx.bezierCurveTo(cx-s*.48,cy,cx-s*.48,cy-s*.3,cx,cy-s*.08);
+  ctx.bezierCurveTo(cx+s*.48,cy-s*.3,cx+s*.48,cy,cx,cy+s*.32);
+  ctx.fill();
+}
+function drawThumbsup(ctx,s) {
+  const u=s/16;
+  ctx.fillStyle='#fff';
+  ctx.fillRect(4*u,8*u,8*u,6*u); // fist
+  ctx.fillRect(3*u,2*u,5*u,7*u); // thumb
+  ctx.beginPath(); ctx.arc(5.5*u,2*u,2.5*u,Math.PI,0); ctx.fill(); // thumb tip
+  ctx.fillRect(1*u,8*u,3*u,5*u); // palm left
+  ctx.fillRect(12*u,9*u,2*u,4*u); // palm right
+}
+function drawStar(ctx,s) {
+  const cx=s/2,cy=s/2;
+  ctx.fillStyle='#fff'; ctx.beginPath();
+  for(let i=0;i<5;i++){
+    const a1=(i*4*Math.PI/5)-Math.PI/2, a2=((i*4+2)*Math.PI/5)-Math.PI/2;
+    if(i===0)ctx.moveTo(cx+s*.44*Math.cos(a1),cy+s*.44*Math.sin(a1));
+    else ctx.lineTo(cx+s*.44*Math.cos(a1),cy+s*.44*Math.sin(a1));
+    ctx.lineTo(cx+s*.18*Math.cos(a2),cy+s*.18*Math.sin(a2));
+  }
+  ctx.closePath(); ctx.fill();
+}
+function drawLightning(ctx,s) {
+  ctx.fillStyle='#fff'; ctx.beginPath();
+  ctx.moveTo(s*.58,s*.05); ctx.lineTo(s*.28,s*.52); ctx.lineTo(s*.52,s*.48);
+  ctx.lineTo(s*.42,s*.95); ctx.lineTo(s*.72,s*.45); ctx.lineTo(s*.48,s*.5);
+  ctx.closePath(); ctx.fill();
+}
+function drawSleep(ctx,s) {
+  const {cx,cy}=circleFace(ctx,s);
+  // closed eyes
+  ctx.strokeStyle='#fff'; ctx.lineWidth=s*.04;
+  ctx.beginPath(); ctx.moveTo(cx-s*.2,cy-s*.06); ctx.lineTo(cx-s*.07,cy-s*.06); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx+s*.07,cy-s*.06); ctx.lineTo(cx+s*.2,cy-s*.06); ctx.stroke();
+  // ZZZ
+  ctx.fillStyle='#fff';
+  ctx.font=`bold ${s*.18}px monospace`; ctx.textAlign='left';
+  ctx.fillText('z',cx+s*.2,cy-s*.25);
+  ctx.font=`bold ${s*.14}px monospace`;
+  ctx.fillText('z',cx+s*.3,cy-s*.38);
+  ctx.font=`bold ${s*.1}px monospace`;
+  ctx.fillText('z',cx+s*.38,cy-s*.48);
+}
+function drawAngry(ctx,s) {
+  const {cx,cy}=circleFace(ctx,s);
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.arc(cx-s*.13,cy-s*.02,s*.05,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+s*.13,cy-s*.02,s*.05,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#fff'; ctx.lineWidth=s*.045;
+  // angry brows
+  ctx.beginPath(); ctx.moveTo(cx-s*.23,cy-s*.15); ctx.lineTo(cx-s*.06,cy-s*.07); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx+s*.23,cy-s*.15); ctx.lineTo(cx+s*.06,cy-s*.07); ctx.stroke();
+  // mouth
+  ctx.beginPath(); ctx.moveTo(cx-s*.15,cy+s*.18); ctx.lineTo(cx+s*.15,cy+s*.18); ctx.stroke();
+}
+function drawCool(ctx,s) {
+  const {cx,cy}=circleFace(ctx,s);
+  ctx.strokeStyle='#fff'; ctx.lineWidth=s*.04;
+  ctx.beginPath(); ctx.arc(cx,cy+s*.05,s*.18,0.15,Math.PI-0.15); ctx.stroke();
+  // sunglasses
+  ctx.fillStyle='#fff';
+  ctx.fillRect(cx-s*.38,cy-s*.2,s*.28,s*.18); // left
+  ctx.fillRect(cx+s*.1,cy-s*.2,s*.28,s*.18);  // right
+  ctx.fillRect(cx-s*.1,cy-s*.16,s*.2,s*.08);  // bridge
+  ctx.fillStyle='#050505';
+  ctx.fillRect(cx-s*.36,cy-s*.18,s*.24,s*.14); // left lens
+  ctx.fillRect(cx+s*.12,cy-s*.18,s*.24,s*.14); // right lens
+}
+function drawWink(ctx,s) {
+  const {cx,cy}=circleFace(ctx,s);
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.arc(cx-s*.14,cy-s*.1,s*.05,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#fff'; ctx.lineWidth=s*.04;
+  ctx.beginPath(); ctx.moveTo(cx+s*.08,cy-s*.12); ctx.lineTo(cx+s*.2,cy-s*.06); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy+s*.05,s*.18,0.15,Math.PI-0.15); ctx.stroke();
+}
+function drawSurprised(ctx,s) {
+  const {cx,cy}=circleFace(ctx,s);
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.arc(cx-s*.13,cy-s*.1,s*.055,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+s*.13,cy-s*.1,s*.055,0,Math.PI*2); ctx.fill();
+  // O mouth
+  ctx.strokeStyle='#fff'; ctx.lineWidth=s*.04;
+  ctx.beginPath(); ctx.arc(cx,cy+s*.12,s*.1,0,Math.PI*2); ctx.stroke();
+}
+function drawCry(ctx,s) {
+  const {cx,cy}=circleFace(ctx,s);
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.arc(cx-s*.14,cy-s*.1,s*.05,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+s*.14,cy-s*.1,s*.05,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#fff'; ctx.lineWidth=s*.04;
+  ctx.beginPath(); ctx.arc(cx,cy+s*.26,s*.18,Math.PI+0.15,-0.15); ctx.stroke();
+  // tears
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.arc(cx-s*.14,cy,s*.025,0,Math.PI*2); ctx.fill();
+  ctx.fillRect(cx-s*.155,cy,s*.03,s*.12);
+  ctx.beginPath(); ctx.arc(cx+s*.14,cy,s*.025,0,Math.PI*2); ctx.fill();
+  ctx.fillRect(cx+s*.125,cy,s*.03,s*.12);
+}
+
+// ─── BUILD EMOTE TILES ───
+function buildEmoteTiles() {
+  const grid = document.getElementById('emote-grid');
+  grid.innerHTML = '';
+  EMOTICONS.forEach((em, i) => {
+    const tile = document.createElement('div');
+    tile.className = 'emote-tile' + (i===0?' selected':'');
+    tile.dataset.id = em.id;
+
+    const box = document.createElement('div');
+    box.className = 'emote-preview-box';
+    const c = document.createElement('canvas');
+    c.width = 44; c.height = 44;
+    const tc = c.getContext('2d');
+    tc.fillStyle = '#060606'; tc.fillRect(0,0,44,44);
+    em.draw(tc, 44);
+    box.appendChild(c);
+
+    const nm = document.createElement('div');
+    nm.className = 'emote-tile-name';
+    nm.textContent = em.name;
+
+    tile.appendChild(box);
+    tile.appendChild(nm);
+    tile.addEventListener('click', () => {
+      grid.querySelectorAll('.emote-tile').forEach(t => t.classList.remove('selected'));
+      tile.classList.add('selected');
+      selectedEmote = em.id;
+      drawOLEDEmote(emoteCtx, em.id);
+      drawOLEDEmote(oledCtx, em.id);
+    });
+    grid.appendChild(tile);
+  });
+
+  // Initial emote preview
+  drawOLEDEmote(emoteCtx, EMOTICONS[0].id);
+}
+
+window.addEventListener('load', () => {
+  buildEmoteTiles();
+  // init mono canvas
+  const mc = document.getElementById('mono-canvas').getContext('2d');
+  mc.fillStyle='#050505'; mc.fillRect(0,0,256,128);
+  mc.fillStyle='rgba(255,255,255,0.1)'; mc.font='11px monospace'; mc.textAlign='center';
+  mc.fillText('128 × 64 px',128,68); mc.textAlign='left';
+  // notif perm
+  if('Notification' in window) { notifPerm=Notification.permission; updateNotifAlert(); }
+});
+
+// ─── BLE ───
+async function toggleBLE() {
+  if (isConn) { disconnectBLE(); } else { await connectBLE(); }
+}
+
+async function connectBLE() {
+  if (!navigator.bluetooth) { alert('Web Bluetooth tidak tersedia. Gunakan Chrome Android.'); return; }
+  setBLEState('connecting','Menghubungkan...');
+  try {
+    bleDevice = await navigator.bluetooth.requestDevice({
+      filters:[{services:[SVC]}], optionalServices:[SVC]
+    });
+    bleDevice.addEventListener('gattserverdisconnected', onBLEDisconnect);
+    const server = await bleDevice.gatt.connect();
+    const svc = await server.getPrimaryService(SVC);
+    rxChar = await svc.getCharacteristic(RX);
+    txChar = await svc.getCharacteristic(TX);
+    await txChar.startNotifications();
+    txChar.addEventListener('characteristicvaluechanged', onESP32Msg);
+    isConn = true;
+    setBLEState('connected', bleDevice.name||'ESP32-OLED');
+    document.getElementById('info-status').textContent = 'Terhubung';
+    setStatus('🟢 Terhubung ke '+(bleDevice.name||'ESP32-OLED'), true);
+    logNotif('✅ BLE terhubung: '+(bleDevice.name||'ESP32'));
+    drawOLEDText(oledCtx, 'BLE Terhubung!\n'+(bleDevice.name||'ESP32-OLED'));
+  } catch(e) {
+    setBLEState('','Tidak Terhubung');
+    setStatus('❌ Gagal: '+e.message);
+  }
+}
+
+function disconnectBLE() {
+  if (bleDevice?.gatt?.connected) bleDevice.gatt.disconnect();
+}
+
+function onBLEDisconnect() {
+  isConn = false; bleDevice = null; rxChar = null; txChar = null;
+  setBLEState('','Tidak Terhubung');
+  document.getElementById('info-status').textContent='Tidak terhubung';
+  setStatus('🔴 BLE terputus');
+  if(clockActive) { clockActive=false; document.getElementById('toggle-clock').classList.remove('on'); }
+}
+
+function onESP32Msg(e) {
+  const val = new TextDecoder().decode(e.target.value);
+  console.log('ESP32:', val);
+}
+
+async function sendBLE(data) {
+  if (!isConn||!rxChar) { setStatus('⚠️ Tidak terhubung!'); return false; }
+  try {
+    const enc = new TextEncoder().encode(data);
+    const chunk = 20;
+    for (let i=0;i<enc.length;i+=chunk) {
+      if (i===0) await rxChar.writeValue(enc.slice(0,Math.min(chunk,enc.length)));
+      else { await sleep(15); await rxChar.writeValueWithoutResponse(enc.slice(i,i+chunk)); }
+    }
+    return true;
+  } catch(e) { setStatus('❌ Gagal kirim: '+e.message); return false; }
+}
+
+function setBLEState(state, text) {
+  const pill = document.getElementById('ble-pill');
+  const dot = document.getElementById('ble-dot');
+  pill.className = 'ble-pill' + (state==='connected'?' connected':state==='connecting'?' connecting':'');
+  dot.style.background = state==='connected'?'var(--green)':state==='connecting'?'var(--accent)':'var(--text3)';
+  document.getElementById('ble-pill-text').textContent = text;
+  if (state==='connected') {
+    document.getElementById('btn-ble-icon').textContent='🔴';
+    document.getElementById('btn-ble-text').textContent='Putuskan Koneksi';
+    document.getElementById('btn-ble-main').classList.add('connected');
+    document.getElementById('ble-device-label').textContent = text;
+  } else {
+    document.getElementById('btn-ble-icon').textContent='📡';
+    document.getElementById('btn-ble-text').textContent='Hubungkan ke ESP32';
+    document.getElementById('btn-ble-main').classList.remove('connected');
+    document.getElementById('ble-device-label').textContent = '';
+  }
+}
+
+// ─── CLOCK ───
+function tickClock() {
+  const now = new Date();
+  const hh=String(now.getHours()).padStart(2,'0');
+  const mm=String(now.getMinutes()).padStart(2,'0');
+  const ss=String(now.getSeconds()).padStart(2,'0');
+  const t=`${hh}:${mm}:${ss}`;
+  const days=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+  const months=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+  const d=`${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  document.getElementById('clock-time').textContent=t;
+  document.getElementById('clock-date').textContent=d;
+  if (clockActive) { drawOLEDClock(oledCtx,t); sendBLE('CLOCK:'+t); }
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+function toggleClock() {
+  const tog=document.getElementById('toggle-clock');
+  clockActive=!clockActive;
+  tog.classList.toggle('on',clockActive);
+  if(clockActive&&!isConn){alert('Hubungkan BLE terlebih dahulu!');clockActive=false;tog.classList.remove('on');return;}
+  if(clockActive){setStatus('🕐 Jam OLED aktif');document.getElementById('clock-sub').textContent='Mengirim jam ke OLED setiap detik...';}
+  else{setStatus('Jam OLED dimatikan');document.getElementById('clock-sub').textContent='Jam dikirim via BLE setiap detik';clearOLED(oledCtx);}
+}
+
+// ─── TEXT ───
+function onTextInput() {
+  const t=document.getElementById('text-msg').value;
+  document.getElementById('text-count').textContent=t.length;
+  drawOLEDText(oledCtx,t);
+}
+
+async function sendText() {
+  const msg=document.getElementById('text-msg').value.trim();
+  const dur=parseInt(document.getElementById('text-dur').value)*1000;
+  if(!msg){alert('Pesan tidak boleh kosong!');return;}
+  drawOLEDText(oledCtx,msg);
+  const ok=await sendBLE(`TEXT:${msg}:${dur}`);
+  if(ok) setStatus(`✅ Teks dikirim (${dur/1000}s)`);
+}
+
+// ─── EMOTICON ───
+async function sendEmoticon() {
+  const dur=parseInt(document.getElementById('emote-dur').value)*1000;
+  drawOLEDEmote(oledCtx,selectedEmote);
+  const ok=await sendBLE(`EMOTICON:${selectedEmote}:${dur}`);
+  if(ok) setStatus(`✅ Emotikon "${selectedEmote}" dikirim (${dur/1000}s)`);
+}
+
+// ─── IMAGE ───
+function loadImage(e) {
+  const file=e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      sourceImg=img;
+      const prev=document.getElementById('img-preview');
+      prev.src=ev.target.result; prev.style.display='block';
+      document.getElementById('img-placeholder').style.display='none';
+      renderMono();
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateThreshold(){
+  document.getElementById('thresh-val').textContent=document.getElementById('threshold').value;
+  if(sourceImg)renderMono();
+}
+
+function renderMono(){
+  if(!sourceImg)return;
+  const th=parseInt(document.getElementById('threshold').value);
+  const wc=document.getElementById('work-canvas');
+  const wctx=wc.getContext('2d');
+  wctx.fillStyle='#000'; wctx.fillRect(0,0,128,64);
+  wctx.drawImage(sourceImg,0,0,128,64);
+  const px=wctx.getImageData(0,0,128,64).data;
+  const mc=document.getElementById('mono-canvas').getContext('2d');
+  mc.fillStyle='#050505'; mc.fillRect(0,0,256,128);
+  for(let y=0;y<64;y++) for(let x=0;x<128;x++){
+    const i=(y*128+x)*4;
+    const g=0.299*px[i]+0.587*px[i+1]+0.114*px[i+2];
+    if(g>th){mc.fillStyle='#fff';mc.fillRect(x*2,y*2,2,2);}
+  }
+}
+
+async function sendImage(){
+  if(!sourceImg){alert('Pilih gambar terlebih dahulu!');return;}
+  if(!isConn){alert('Hubungkan BLE terlebih dahulu!');return;}
+  const th=parseInt(document.getElementById('threshold').value);
+  const dur=parseInt(document.getElementById('img-dur').value)*1000;
+  const wc=document.getElementById('work-canvas');
+  const px=wc.getContext('2d').getImageData(0,0,128,64).data;
+  // SSD1306 bitmap: 1bpp, vertical pages, 128 cols × 8 pages
+  const bm=new Uint8Array(1024);
+  for(let pg=0;pg<8;pg++) for(let col=0;col<128;col++){
+    let byte=0;
+    for(let bit=0;bit<8;bit++){
+      const i=((pg*8+bit)*128+col)*4;
+      const g=0.299*px[i]+0.587*px[i+1]+0.114*px[i+2];
+      if(g>th)byte|=(1<<bit);
+    }
+    bm[pg*128+col]=byte;
+  }
+  const b64=btoa(String.fromCharCode(...bm));
+  setStatus('📤 Mengirim gambar...');
+  await sendBLE('BITMAP_START:');
+  await sleep(60);
+  for(let i=0;i<b64.length;i+=14){
+    await sendBLE('BITMAP_DATA:'+b64.slice(i,i+14));
+    await sleep(25);
+  }
+  await sendBLE('BITMAP_END:'+dur);
+  setStatus('✅ Gambar berhasil dikirim!');
+}
+
+// ─── NOTIFICATION ───
+async function requestNotifPerm(){
+  if(!('Notification' in window)){alert('Browser tidak mendukung notifikasi.');return;}
+  notifPerm=await Notification.requestPermission();
+  updateNotifAlert();
+}
+
+function updateNotifAlert(){
+  const el=document.getElementById('notif-perm-alert');
+  if(notifPerm==='granted'){el.className='alert alert-success';el.textContent='✅ Izin notifikasi diberikan! Aktifkan toggle di bawah.';}
+  else if(notifPerm==='denied'){el.className='alert';el.style='background:var(--red-light);border-left:3px solid var(--red);color:var(--red)';el.textContent='❌ Izin ditolak. Buka pengaturan Chrome untuk mengizinkan.';}
+  else{el.className='alert alert-warn';el.textContent='⚠️ Izin notifikasi belum diberikan.';}
+}
+
+function toggleNotif(){
+  const tog=document.getElementById('toggle-notif');
+  notifActive=!notifActive;
+  if(notifActive&&notifPerm!=='granted'){alert('Harap berikan izin notifikasi terlebih dahulu!');notifActive=false;return;}
+  tog.classList.toggle('on',notifActive);
+}
+
+function logNotif(msg){
+  const log=document.getElementById('notif-log');
+  const ts=new Date().toTimeString().slice(0,8);
+  log.innerHTML+=`[${ts}] ${msg}\n`;
+  log.scrollTop=log.scrollHeight;
+}
+
+async function sendTestNotif(app,msg){
+  const dur=parseInt(document.getElementById('notif-dur').value)*1000;
+  logNotif(`📨 ${app}: ${msg}`);
+  const ok=await sendBLE(`NOTIFY:${app}:${msg}:${dur}`);
+  if(ok) setStatus(`✅ Notifikasi "${app}" dikirim ke OLED`);
+  if(notifPerm==='granted') new Notification(app,{body:msg});
+}
+
+// ─── UTILS ───
+function setStatus(msg, ok=false){
+  document.getElementById('status-text').textContent=msg;
+  document.getElementById('status-dot').className='status-bar-dot'+(ok?' ok':'');
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+</script>
+</body>
+</html>
