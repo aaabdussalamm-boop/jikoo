@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32 OLED Flasher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --white: #ffffff;
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface2: #f0f2f5;
+  --border: #e4e7ed;
+  --border2: #d0d5de;
+  --text: #1a1d23;
+  --text2: #52576a;
+  --text3: #9299ab;
+  --accent: #3b5bdb;
+  --accent-light: #eef1fd;
+  --accent-hover: #3351c9;
+  --green: #2f9e44;
+  --green-light: #ebf7ee;
+  --orange: #e67700;
+  --orange-light: #fff3e0;
+  --red: #c92a2a;
+  --red-light: #fef2f2;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow: 0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-lg: 16px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.5; min-height: 100vh; }
+
+/* ── LAYOUT ── */
+.layout { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  background: var(--white);
+  border-right: 1px solid var(--border);
+  position: sticky; top: 0; height: 100vh;
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+}
+
+.sidebar-logo {
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+}
+
+.logo-mark {
+  width: 36px; height: 36px;
+  background: var(--text);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+
+.logo-text { font-weight: 700; font-size: 15px; letter-spacing: -0.3px; }
+.logo-version { font-size: 11px; color: var(--text3); margin-top: 1px; font-family: 'JetBrains Mono', monospace; }
+
+.sidebar-section {
+  padding: 16px 12px 8px;
+}
+
+.sidebar-section-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--text3);
+  padding: 0 8px; margin-bottom: 4px;
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: var(--radius-sm);
+  cursor: pointer; transition: background 0.15s, color 0.15s;
+  font-size: 13.5px; font-weight: 500; color: var(--text2);
+  text-decoration: none;
+}
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: var(--accent-light); color: var(--accent); }
+.nav-item-icon { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.7; font-size: 16px; text-align: center; }
+.nav-item.active .nav-item-icon { opacity: 1; }
+
+.sidebar-bottom {
+  margin-top: auto; padding: 16px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.conn-badge {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: var(--radius-sm);
+  background: var(--surface2); font-size: 12px; color: var(--text2);
+}
+.conn-badge.connected { background: var(--green-light); color: var(--green); }
+.badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+.conn-badge.connected .badge-dot { background: var(--green); animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+/* ── MAIN ── */
+.main { padding: 0; }
+
+.page { display: none; }
+.page.active { display: block; }
+
+.page-header {
+  background: var(--white); border-bottom: 1px solid var(--border);
+  padding: 20px 32px;
+  position: sticky; top: 0; z-index: 10;
+}
+.page-title { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+.page-desc { font-size: 13px; color: var(--text3); margin-top: 2px; }
+
+.page-body { padding: 28px 32px; max-width: 800px; }
+
+/* ── CARDS ── */
+.card {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px;
+  margin-bottom: 16px; box-shadow: var(--shadow-sm);
+}
+
+.card-title {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+}
+.card-title-icon { font-size: 16px; }
+
+/* ── OLED TYPE SELECTOR ── */
+.oled-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.oled-card {
+  border: 2px solid var(--border); border-radius: var(--radius);
+  padding: 16px; cursor: pointer; transition: all 0.2s;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  text-align: center; position: relative; background: var(--white);
+}
+.oled-card:hover { border-color: var(--border2); box-shadow: var(--shadow-sm); }
+.oled-card.selected { border-color: var(--accent); background: var(--accent-light); }
+.oled-card input { position: absolute; opacity: 0; }
+
+.oled-screen {
+  width: 72px; height: 46px; background: #0a0a0a;
+  border-radius: 4px; display: flex; align-items: center; justify-content: center;
+  overflow: hidden; position: relative; border: 1px solid #333;
+}
+.oled-screen canvas { image-rendering: pixelated; }
+
+.oled-name { font-size: 13px; font-weight: 600; }
+.oled-desc { font-size: 11px; color: var(--text3); font-family: 'JetBrains Mono', monospace; }
+.oled-badge {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.5px;
+  padding: 2px 8px; border-radius: 20px;
+  background: var(--surface2); color: var(--text3);
+}
+.oled-card.selected .oled-badge { background: var(--accent); color: white; }
+
+/* ── WIRING TABLE ── */
+.wiring-details { margin-top: 8px; }
+.wiring-details summary {
+  font-size: 12px; color: var(--accent); cursor: pointer;
+  padding: 6px 0; user-select: none;
+  display: flex; align-items: center; gap: 6px;
+}
+.wiring-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
+.wiring-table th { background: var(--surface2); padding: 6px 12px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; color: var(--text3); text-transform: uppercase; }
+.wiring-table td { padding: 7px 12px; border-bottom: 1px solid var(--border); }
+.wiring-table tr:last-child td { border-bottom: none; }
+.pin { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; }
+.pin.esp { color: var(--accent); }
+.pin.oled { color: var(--orange); }
+
+/* ── STATUS AREA ── */
+.status-area {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: var(--radius-sm);
+  background: var(--surface2); margin-bottom: 14px;
+  font-size: 12.5px; color: var(--text2);
+}
+.status-area.connected { background: var(--green-light); color: var(--green); }
+.status-area.error { background: var(--red-light); color: var(--red); }
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 9px 18px; border-radius: var(--radius-sm);
+  font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 600;
+  border: 1px solid transparent; cursor: pointer; transition: all 0.15s;
+  letter-spacing: -0.1px; white-space: nowrap; text-decoration: none;
+}
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+.btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+.btn-success { background: var(--green); color: white; }
+.btn-success:hover:not(:disabled) { background: #287a3b; }
+
+.btn-outline { background: white; color: var(--text); border-color: var(--border2); }
+.btn-outline:hover:not(:disabled) { background: var(--surface2); border-color: var(--border2); }
+
+.btn-ghost { background: transparent; color: var(--text2); border-color: transparent; }
+.btn-ghost:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
+
+.btn-sm { padding: 6px 13px; font-size: 12.5px; }
+.btn-full { width: 100%; }
+
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── PROGRESS ── */
+.progress-wrap {
+  height: 6px; background: var(--surface2); border-radius: 3px;
+  overflow: hidden; margin: 10px 0; display: none;
+}
+.progress-bar {
+  height: 100%; width: 0%; border-radius: 3px;
+  background: var(--accent); transition: width 0.4s ease;
+}
+
+/* ── TERMINAL ── */
+.terminal {
+  background: #0d1117; border-radius: var(--radius);
+  padding: 14px 16px; font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; line-height: 1.8; height: 160px; overflow-y: auto;
+  color: #7ee787; border: 1px solid #21262d; margin-top: 12px;
+}
+.terminal .t-info { color: #79c0ff; }
+.terminal .t-success { color: #56d364; }
+.terminal .t-warn { color: #e3b341; }
+.terminal .t-error { color: #f85149; }
+.terminal::-webkit-scrollbar { width: 4px; }
+.terminal::-webkit-scrollbar-track { background: transparent; }
+.terminal::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+
+/* ── SERIAL INPUT ── */
+.input-row { display: flex; gap: 8px; margin-top: 10px; }
+.input {
+  flex: 1; background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 12px;
+  font-family: 'Inter', sans-serif; font-size: 13.5px; color: var(--text);
+  outline: none; transition: border-color 0.15s;
+}
+.input:focus { border-color: var(--accent); }
+.input::placeholder { color: var(--text3); }
+
+.input-num {
+  width: 72px; background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 10px;
+  font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text);
+  outline: none; text-align: center;
+}
+.input-num:focus { border-color: var(--accent); }
+
+.field-label { font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 6px; }
+
+.form-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* ── EMOTICON GRID ── */
+.emote-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+}
+
+.emote-tile {
+  border: 1.5px solid var(--border); border-radius: var(--radius);
+  padding: 12px 6px; text-align: center; cursor: pointer;
+  transition: all 0.18s; background: var(--white);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.emote-tile:hover { border-color: var(--accent); background: var(--accent-light); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.emote-tile:active { transform: scale(0.95); }
+.emote-tile.selected { border-color: var(--accent); background: var(--accent-light); }
+
+.emote-preview {
+  width: 48px; height: 48px; background: #0a0a0a;
+  border-radius: 4px; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid #222;
+}
+.emote-preview canvas { image-rendering: pixelated; width: 48px; height: 48px; }
+
+.emote-name { font-size: 11px; font-weight: 500; color: var(--text2); }
+
+/* ── DOWNLOAD CARD ── */
+.download-card {
+  background: linear-gradient(135deg, #f0f4ff 0%, #e8f5e9 100%);
+  border-color: #c5d5ff;
+}
+
+.feature-list {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  margin: 12px 0;
+}
+.feature-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12.5px; color: var(--text2);
+}
+.feature-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+
+/* ── ALERT ── */
+.alert {
+  padding: 10px 14px; border-radius: var(--radius-sm);
+  font-size: 12.5px; margin-bottom: 12px; border-left: 3px solid;
+  display: flex; align-items: flex-start; gap: 8px;
+}
+.alert-info { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+.alert-warn { background: var(--orange-light); border-color: var(--orange); color: var(--orange); }
+.alert-success { background: var(--green-light); border-color: var(--green); color: var(--green); }
+
+/* ── SECTION DIVIDER ── */
+.section-div { display: flex; align-items: center; gap: 10px; margin: 18px 0 14px; }
+.section-div-label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+.section-div-line { flex: 1; height: 1px; background: var(--border); }
+
+/* ── MOBILE ── */
+@media (max-width: 720px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { position: fixed; left: -240px; z-index: 100; height: 100vh; transition: left 0.3s; }
+  .sidebar.open { left: 0; }
+  .main { padding-top: 52px; }
+  .mobile-topbar { display: flex; }
+  .page-body { padding: 20px 16px; }
+  .emote-grid { grid-template-columns: repeat(4, 1fr); }
+  .oled-selector { grid-template-columns: 1fr 1fr; }
+}
+@media (min-width: 721px) {
+  .mobile-topbar { display: none; }
+}
+
+.mobile-topbar {
+  background: var(--white); border-bottom: 1px solid var(--border);
+  padding: 12px 16px; position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  align-items: center; justify-content: space-between;
+}
+
+.hamburger { background: none; border: none; cursor: pointer; font-size: 20px; color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- Mobile topbar -->
+<div class="mobile-topbar">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <span style="font-weight:700;font-size:15px">ESP32 OLED Flasher</span>
+  <div class="badge-dot connected" id="mob-dot" style="background:var(--text3)"></div>
+</div>
+
+<div class="layout">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">📟</div>
+      <div>
+        <div class="logo-text">ESP32 OLED</div>
+        <div class="logo-version">Web Flasher v1.0</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Setup</div>
+      <a class="nav-item active" data-page="page-flash" onclick="goTo('page-flash',this)">
+        <span class="nav-item-icon">⚡</span> Flash Firmware
+      </a>
+      <a class="nav-item" data-page="page-serial" onclick="goTo('page-serial',this)">
+        <span class="nav-item-icon">📡</span> Serial Commander
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Controller</div>
+      <a class="nav-item" data-page="page-download" onclick="goTo('page-download',this)">
+        <span class="nav-item-icon">📥</span> Download App
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Referensi</div>
+      <a class="nav-item" data-page="page-wiring" onclick="goTo('page-wiring',this)">
+        <span class="nav-item-icon">🔌</span> Wiring Diagram
+      </a>
+      <a class="nav-item" data-page="page-protocol" onclick="goTo('page-protocol',this)">
+        <span class="nav-item-icon">📋</span> Protokol BLE
+      </a>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="conn-badge" id="sidebar-conn-badge">
+        <span class="badge-dot" id="sidebar-dot"></span>
+        <span id="sidebar-conn-text">Belum terhubung</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main class="main">
+
+    <!-- PAGE: FLASH -->
+    <div class="page active" id="page-flash">
+      <div class="page-header">
+        <div class="page-title">Flash Firmware</div>
+        <div class="page-desc">Pilih tipe layar OLED lalu upload firmware ke ESP32 via USB</div>
+      </div>
+      <div class="page-body">
+
+        <!-- Step 1: Select OLED -->
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon">🖥️</span> Pilih Tipe Layar OLED</div>
+
+          <div class="oled-selector">
+            <label class="oled-card selected" id="oled-opt-ssd">
+              <input type="radio" name="oled" value="SSD1306" checked>
+              <div class="oled-screen"><canvas id="oled-prev-ssd" width="72" height="40"></canvas></div>
+              <div class="oled-name">0.96 inch</div>
+              <div class="oled-desc">SSD1306 · 128×64</div>
+              <div class="oled-badge">Paling umum</div>
+            </label>
+
+            <label class="oled-card" id="oled-opt-sh1">
+              <input type="radio" name="oled" value="SH1106">
+              <div class="oled-screen"><canvas id="oled-prev-sh1" width="72" height="40"></canvas></div>
+              <div class="oled-name">1.3 inch</div>
+              <div class="oled-desc">SH1106 · 128×64</div>
+              <div class="oled-badge">Lebih besar</div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Step 2: Connect & Flash -->
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon">⚡</span> Upload Firmware</div>
+
+          <div class="alert alert-info">
+            💡 Hubungkan ESP32 ke komputer via USB. Gunakan Chrome atau Edge versi terbaru.
+          </div>
+
+          <div class="status-area" id="flash-status">
+            <span class="badge-dot" id="flash-dot"></span>
+            <span id="flash-status-text">Serial belum terhubung</span>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-outline" id="btn-connect" onclick="connectSerial()">🔌 Hubungkan Serial</button>
+            <button class="btn btn-primary" id="btn-flash" onclick="flashFirmware()" disabled>⚡ Flash Firmware</button>
+            <button class="btn btn-ghost btn-sm" id="btn-disconnect" onclick="disconnectSerial()" disabled>Putuskan</button>
+          </div>
+
+          <div class="progress-wrap" id="prog-wrap">
+            <div class="progress-bar" id="prog-bar"></div>
+          </div>
+
+          <div class="terminal" id="log-term">
+<span class="t-info">[READY] ESP32 OLED Web Flasher siap.</span>
+<span class="t-info">[INFO]  Pilih OLED → Hubungkan Serial → Flash Firmware.</span>
+</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PAGE: SERIAL COMMANDER -->
+    <div class="page" id="page-serial">
+      <div class="page-header">
+        <div class="page-title">Serial Commander</div>
+        <div class="page-desc">Kirim perintah ke ESP32 melalui koneksi USB Serial</div>
+      </div>
+      <div class="page-body">
+
+        <!-- Rename BLE -->
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon">📡</span> Ganti Nama Bluetooth</div>
+          <div class="field-label">Nama perangkat BLE (maks. 20 karakter)</div>
+          <div class="input-row">
+            <input type="text" class="input" id="bt-name" value="ESP32-OLED" maxlength="20" placeholder="Nama Bluetooth...">
+            <button class="btn btn-primary" onclick="renameBluetooth()">Ganti Nama</button>
+          </div>
+          <div style="font-size:11.5px;color:var(--text3);margin-top:8px;">⚠️ ESP32 akan restart otomatis setelah nama diganti.</div>
+        </div>
+
+        <!-- Send Emoticon -->
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon">😊</span> Kirim Emotikon ke OLED</div>
+
+          <div class="emote-grid" id="serial-emote-grid">
+            <!-- generated by JS -->
+          </div>
+
+          <div class="form-row" style="margin-top:14px">
+            <span class="field-label" style="margin:0">Durasi tampil:</span>
+            <input type="number" class="input-num" id="serial-emote-dur" value="5" min="1" max="60">
+            <span style="font-size:12.5px;color:var(--text3)">detik</span>
+            <button class="btn btn-primary btn-sm" id="serial-send-emote-btn" onclick="serialSendEmote()">Kirim ke OLED</button>
+          </div>
+        </div>
+
+        <!-- Send Text -->
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon">✏️</span> Kirim Teks ke OLED</div>
+          <div class="field-label">Pesan teks</div>
+          <input type="text" class="input" id="serial-text" placeholder="Teks yang akan tampil di OLED..." maxlength="120" style="margin-bottom:10px">
+          <div class="form-row">
+            <span class="field-label" style="margin:0">Durasi:</span>
+            <input type="number" class="input-num" id="serial-text-dur" value="5" min="1" max="3600">
+            <span style="font-size:12.5px;color:var(--text3)">detik</span>
+            <button class="btn btn-primary btn-sm" onclick="serialSendText()">Kirim ke OLED</button>
+          </div>
+        </div>
+
+        <!-- Raw terminal -->
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon">🛠️</span> Konsol Serial Manual</div>
+          <div class="input-row">
+            <input type="text" class="input" id="raw-cmd" placeholder="Ketik perintah manual (Enter untuk kirim)">
+            <button class="btn btn-outline" onclick="sendRaw()">Kirim</button>
+          </div>
+          <div class="terminal" id="serial-term" style="height:130px">
+<span class="t-info">[SERIAL] Konsol siap. Kirim perintah manual di atas.</span>
+</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PAGE: DOWNLOAD -->
+    <div class="page" id="page-download">
+      <div class="page-header">
+        <div class="page-title">Download Controller App</div>
+        <div class="page-desc">File HTML untuk mengontrol ESP32 via Bluetooth dari ponsel Android</div>
+      </div>
+      <div class="page-body">
+
+        <div class="card download-card">
+          <div class="card-title"><span class="card-title-icon">📱</span> ESP32 OLED Controller</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">
+            Buka file ini di <strong>Chrome Android</strong>. Tidak perlu WiFi — koneksi langsung via Bluetooth BLE.
+          </div>
+          <div class="feature-list">
+            <div class="feature-item"><span class="feature-dot"></span>Jam real-time dari HP ke OLED</div>
+            <div class="feature-item"><span class="feature-dot"></span>Kirim teks kustom via BLE</div>
+            <div class="feature-item"><span class="feature-dot"></span>80+ emotikon pixel art kustom</div>
+            <div class="feature-item"><span class="feature-dot"></span>Upload foto → monokrom 128×64</div>
+            <div class="feature-item"><span class="feature-dot"></span>Pratinjau OLED virtual (canvas)</div>
+            <div class="feature-item"><span class="feature-dot"></span>Forward notifikasi HP ke OLED</div>
+            <div class="feature-item"><span class="feature-dot"></span>Koneksi langsung BLE tanpa WiFi</div>
+            <div class="feature-item"><span class="feature-dot"></span>Tidak perlu install aplikasi</div>
+          </div>
+
+          <button class="btn btn-success btn-full" style="margin-top:4px" onclick="downloadController()">
+            📥 Download Controller.html
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon">ℹ️</span> Cara Penggunaan</div>
+          <div style="font-size:13px;color:var(--text2);line-height:2">
+            1. Download file <code style="background:var(--surface2);padding:1px 5px;border-radius:3px;font-family:'JetBrains Mono',monospace">Controller.html</code> di atas<br>
+            2. Kirim file ke HP Android (via Telegram, Drive, dll.)<br>
+            3. Buka file menggunakan <strong>Chrome Android</strong><br>
+            4. Aktifkan Bluetooth → Tap "Hubungkan ke ESP32"<br>
+            5. Pilih perangkat "ESP32-OLED" dari daftar<br>
+            6. Selesai! Gunakan tab di controller untuk mengontrol OLED
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PAGE: WIRING -->
+    <div class="page" id="page-wiring">
+      <div class="page-header">
+        <div class="page-title">Wiring Diagram</div>
+        <div class="page-desc">Panduan koneksi kabel ESP32 ke OLED dan komponen lainnya</div>
+      </div>
+      <div class="page-body">
+
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon">🔌</span> ESP32 ↔ OLED (I2C)</div>
+          <table class="wiring-table">
+            <tr><th>OLED Pin</th><th>ESP32 Pin</th><th>Keterangan</th></tr>
+            <tr><td><span class="pin oled">VCC</span></td><td><span class="pin esp">3.3V</span></td><td>Power supply</td></tr>
+            <tr><td><span class="pin oled">GND</span></td><td><span class="pin esp">GND</span></td><td>Ground</td></tr>
+            <tr><td><span class="pin oled">SCL</span></td><td><span class="pin esp">GPIO 22</span></td><td>I2C Clock</td></tr>
+            <tr><td><span class="pin oled">SDA</span></td><td><span class="pin esp">GPIO 21</span></td><td>I2C Data</td></tr>
+          </table>
+          <div style="font-size:12px;color:var(--text3);margin-top:8px;">I2C Address default: <code style="font-family:'JetBrains Mono',monospace">0x3C</code> · Coba <code style="font-family:'JetBrains Mono',monospace">0x3D</code> jika tidak terdeteksi.</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon">⚠️</span> Catatan Penting</div>
+          <div style="font-size:13px;color:var(--text2);line-height:2">
+            • Gunakan tegangan <strong>3.3V</strong> untuk OLED, bukan 5V<br>
+            • SH1106 (1.3") menggunakan driver yang sama dengan SSD1306 namun memiliki offset kolom 2px<br>
+            • Jangan gunakan GPIO 0 saat booting (pin BOOT)<br>
+            • Untuk SSD1306, pin RESET dapat dihubungkan ke RST ESP32 atau dibiarkan floating
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PAGE: PROTOCOL -->
+    <div class="page" id="page-protocol">
+      <div class="page-header">
+        <div class="page-title">Protokol BLE</div>
+        <div class="page-desc">Format perintah yang dikirim dari Controller ke ESP32 via Bluetooth</div>
+      </div>
+      <div class="page-body">
+
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon">📋</span> BLE UUIDs</div>
+          <table class="wiring-table">
+            <tr><th>Name</th><th>UUID</th><th>Property</th></tr>
+            <tr><td>Service</td><td><code style="font-family:'JetBrains Mono',monospace;font-size:11px">12345678-1234-1234-1234-123456789012</code></td><td>—</td></tr>
+            <tr><td>RX (Controller→ESP32)</td><td><code style="font-family:'JetBrains Mono',monospace;font-size:11px">…789013</code></td><td>WRITE</td></tr>
+            <tr><td>TX (ESP32→Controller)</td><td><code style="font-family:'JetBrains Mono',monospace;font-size:11px">…789014</code></td><td>NOTIFY</td></tr>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon">📡</span> Perintah BLE</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2.2;color:var(--text2)">
+            <div><span style="color:var(--accent);font-weight:600">TEXT</span>:<em>&lt;pesan&gt;</em>:<em>&lt;durasi_ms&gt;</em></div>
+            <div><span style="color:var(--accent);font-weight:600">EMOTICON</span>:<em>&lt;nama&gt;</em>:<em>&lt;durasi_ms&gt;</em></div>
+            <div><span style="color:var(--accent);font-weight:600">CLOCK</span>:<em>&lt;HH:MM:SS&gt;</em></div>
+            <div><span style="color:var(--accent);font-weight:600">NOTIFY</span>:<em>&lt;App&gt;</em>:<em>&lt;Pesan&gt;</em>:<em>&lt;durasi_ms&gt;</em></div>
+            <div><span style="color:var(--accent);font-weight:600">BITMAP_START</span>: → <span style="color:var(--accent);font-weight:600">BITMAP_DATA</span>:<em>&lt;b64&gt;</em> → <span style="color:var(--accent);font-weight:600">BITMAP_END</span>:<em>&lt;ms&gt;</em></div>
+            <div><span style="color:var(--accent);font-weight:600">CLEAR</span>:</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon">🖥️</span> Perintah Serial (USB)</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2.2;color:var(--text2)">
+            <div><span style="color:var(--orange);font-weight:600">SET_NAME</span>:<em>&lt;nama_baru&gt;</em></div>
+            <div><span style="color:var(--orange);font-weight:600">EMOTICON</span>:<em>&lt;nama&gt;</em>:<em>&lt;durasi_ms&gt;</em></div>
+            <div><span style="color:var(--orange);font-weight:600">TEXT</span>:<em>&lt;pesan&gt;</em>:<em>&lt;durasi_ms&gt;</em></div>
+            <div><span style="color:var(--orange);font-weight:600">CLEAR</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ─── OLED PREVIEW RENDER ───
+function drawOLEDPreview(canvasId, label, small) {
+  const c = document.getElementById(canvasId);
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const w = c.width, h = c.height;
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold ${small ? 7 : 7}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(label, w/2, h/2 - 4);
+  ctx.font = '6px monospace';
+  ctx.fillStyle = '#888';
+  ctx.fillText('128×64', w/2, h/2 + 7);
+
+  // draw tiny fake pixels
+  for (let i = 0; i < 5; i++) {
+    const x = 6 + i * 12, y = h - 9;
+    ctx.fillStyle = Math.random() > 0.5 ? '#fff' : '#333';
+    ctx.fillRect(x, y, 2, 2);
+  }
+}
+drawOLEDPreview('oled-prev-ssd', '0.96"');
+drawOLEDPreview('oled-prev-sh1', '1.3"');
+
+// OLED selector
+document.querySelectorAll('input[name="oled"]').forEach(r => {
+  r.addEventListener('change', () => {
+    document.querySelectorAll('.oled-card').forEach(c => c.classList.remove('selected'));
+    r.closest('.oled-card').classList.add('selected');
+  });
+});
+
+// ─── NAVIGATION ───
+function goTo(pageId, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('sidebar').classList.remove('open');
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+// ─── WEB SERIAL ───
+let port = null, writer = null, serialConnected = false;
+
+async function connectSerial() {
+  if (!('serial' in navigator)) {
+    tlog('Web Serial tidak tersedia. Gunakan Chrome/Edge 89+', 'error'); return;
+  }
+  try {
+    port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 115200 });
+    writer = port.writable.getWriter();
+    serialConnected = true;
+    setFlashStatus('connected', '✓ Serial terhubung pada 115200 baud');
+    document.getElementById('btn-flash').disabled = false;
+    document.getElementById('btn-disconnect').disabled = false;
+    document.getElementById('btn-connect').disabled = true;
+    setSidebarConn(true, 'Serial terhubung');
+    tlog('Serial terhubung!', 'success');
+    startSerialRead();
+  } catch(e) {
+    tlog('Gagal terhubung: ' + e.message, 'error');
+  }
+}
+
+async function disconnectSerial() {
+  try {
+    if (writer) { writer.releaseLock(); writer = null; }
+    if (port) { await port.close(); port = null; }
+  } catch(e) {}
+  serialConnected = false;
+  setFlashStatus('', 'Serial belum terhubung');
+  document.getElementById('btn-flash').disabled = true;
+  document.getElementById('btn-disconnect').disabled = true;
+  document.getElementById('btn-connect').disabled = false;
+  setSidebarConn(false, 'Belum terhubung');
+  tlog('Serial diputus.', 'warn');
+}
+
+async function startSerialRead() {
+  const dec = new TextDecoderStream();
+  port.readable.pipeTo(dec.writable);
+  const r = dec.readable.getReader();
+  let buf = '';
+  try {
+    while(true) {
+      const {value, done} = await r.read();
+      if (done) break;
+      buf += value;
+      let lines = buf.split('\n');
+      buf = lines.pop();
+      lines.forEach(l => { if (l.trim()) tlogSerial('← ' + l.trim()); });
+    }
+  } catch(e) {}
+}
+
+async function sendSerial(text) {
+  if (!serialConnected || !writer) { tlog('Serial tidak terhubung!', 'error'); return false; }
+  try {
+    await writer.write(new TextEncoder().encode(text + '\n'));
+    tlogSerial('→ ' + text.trim(), true);
+    return true;
+  } catch(e) { tlog('Gagal kirim: ' + e.message, 'error'); return false; }
+}
+
+// ─── FLASH ───
+async function flashFirmware() {
+  const oled = document.querySelector('input[name="oled"]:checked').value;
+  tlog('Memulai flash untuk ' + oled + '...', 'info');
+  const pw = document.getElementById('prog-wrap'), pb = document.getElementById('prog-bar');
+  pw.style.display = 'block';
+
+  const url = `./firmware/firmware_${oled.toLowerCase()}.bin`;
+  tlog('Mengunduh firmware: ' + url, 'info');
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('File firmware tidak ditemukan');
+    const fw = await res.arrayBuffer();
+    tlog(`Firmware diunduh: ${fw.byteLength} bytes`, 'success');
+    pb.style.width = '20%';
+
+    // Load esptool-js
+    if (typeof ESPLoader === 'undefined') {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/esptool-js@0.4.3/bundle.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+    tlog('esptool-js loaded', 'info');
+    pb.style.width = '35%';
+
+    const transport = new Transport(port);
+    const loader = new ESPLoader({ transport, baudrate: 115200, terminal: { clean: () => {}, writeLine: (m) => tlog(m), write: () => {} } });
+
+    tlog('Menghubungkan ke ESP32 bootloader...', 'info');
+    tlog('⚠  Tahan tombol BOOT pada ESP32!', 'warn');
+    await loader.main_fn();
+    pb.style.width = '55%';
+
+    tlog('Menghapus flash...', 'info');
+    await loader.erase_flash();
+    pb.style.width = '65%';
+
+    const b64 = btoa(String.fromCharCode(...new Uint8Array(fw)));
+    tlog('Menulis firmware...', 'info');
+    await loader.write_flash({ fileArray: [{ data: b64, address: 0x10000 }], flashSize: 'keep', flashMode: 'keep', flashFreq: 'keep', eraseAll: false, compress: true,
+      reportProgress: (n, t) => { pb.style.width = (65 + (n/t)*30) + '%'; }
+    });
+
+    pb.style.width = '100%';
+    tlog('✓ Flash berhasil! Tekan RESET pada ESP32.', 'success');
+    setFlashStatus('connected', '✓ Firmware ter-upload untuk ' + oled);
+    setTimeout(() => { pw.style.display = 'none'; }, 4000);
+
+  } catch(e) {
+    tlog('Demo mode: ' + e.message, 'warn');
+    tlog('Untuk deploy nyata: compile .ino → export .bin → upload ke /firmware/', 'info');
+    tlog('Simulasi flash selesai untuk ' + oled, 'success');
+    for (let i = 0; i <= 100; i += 10) {
+      pb.style.width = i + '%';
+      await sleep(120);
+    }
+    setTimeout(() => { pw.style.display = 'none'; }, 3000);
+  }
+}
+
+// ─── SERIAL COMMANDS ───
+async function renameBluetooth() {
+  const n = document.getElementById('bt-name').value.trim();
+  if (!n) { alert('Nama tidak boleh kosong!'); return; }
+  await sendSerial('SET_NAME:' + n);
+  tlog('Nama BLE diganti ke: ' + n, 'success');
+}
+
+let selectedSerialEmote = 'smile';
+
+async function serialSendEmote() {
+  const dur = parseInt(document.getElementById('serial-emote-dur').value) * 1000;
+  await sendSerial(`EMOTICON:${selectedSerialEmote}:${dur}`);
+  tlog(`Emotikon "${selectedSerialEmote}" dikirim (${dur/1000}s)`, 'success');
+}
+
+async function serialSendText() {
+  const txt = document.getElementById('serial-text').value.trim();
+  const dur = parseInt(document.getElementById('serial-text-dur').value) * 1000;
+  if (!txt) { alert('Teks tidak boleh kosong!'); return; }
+  await sendSerial(`TEXT:${txt}:${dur}`);
+  tlog(`Teks dikirim (${dur/1000}s)`, 'success');
+}
+
+async function sendRaw() {
+  const v = document.getElementById('raw-cmd').value;
+  if (!v) return;
+  await sendSerial(v);
+  document.getElementById('raw-cmd').value = '';
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('raw-cmd').addEventListener('keypress', e => { if (e.key === 'Enter') sendRaw(); });
+});
+
+// ─── EMOTICON PIXEL ART DEFINITIONS ───
+// Each emoticon is a 16x16 pixel art bitmap (array of rows, each row = 16 bits)
+const EMOTICONS = [
+  { id: 'smile',     name: 'Senyum',    draw: drawSmile },
+  { id: 'sad',       name: 'Sedih',     draw: drawSad },
+  { id: 'heart',     name: 'Hati',      draw: drawHeart },
+  { id: 'thumbsup',  name: 'Jempol',    draw: drawThumbsup },
+  { id: 'star',      name: 'Bintang',   draw: drawStar },
+  { id: 'lightning', name: 'Petir',     draw: drawLightning },
+  { id: 'sleep',     name: 'Tidur',     draw: drawSleep },
+  { id: 'angry',     name: 'Marah',     draw: drawAngry },
+  { id: 'cool',      name: 'Keren',     draw: drawCool },
+  { id: 'wink',      name: 'Kedip',     draw: drawWink },
+];
+
+// Pixel art draw functions — 16x16 pixel grid, each draws on a canvas ctx
+function drawCircleFace(ctx, s, eyeL, eyeR, mouthFn) {
+  const cx = s/2, cy = s/2, r = s*0.42;
+  ctx.fillStyle = '#fff';
+  // circle outline
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.arc(cx, cy, r-1.2, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(cx, cy, r-2.2, 0, Math.PI*2); ctx.fill();
+  // eyes
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.arc(eyeL.x, eyeL.y, eyeL.r||1.8, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(eyeR.x, eyeR.y, eyeR.r||1.8, 0, Math.PI*2); ctx.fill();
+  // mouth
+  if (mouthFn) mouthFn(ctx, cx, cy, s);
+}
+
+function drawSmile(ctx, s) {
+  const cx=s/2, cy=s/2;
+  drawCircleFace(ctx, s,
+    {x:cx-s*0.14, y:cy-s*0.1},
+    {x:cx+s*0.14, y:cy-s*0.1},
+    (c,x,y,sz) => {
+      c.strokeStyle='#000'; c.lineWidth=1.5; c.beginPath();
+      c.arc(x, y+sz*0.04, sz*0.16, 0.2, Math.PI-0.2); c.stroke();
+    }
+  );
+}
+
+function drawSad(ctx, s) {
+  const cx=s/2, cy=s/2;
+  drawCircleFace(ctx, s,
+    {x:cx-s*0.14, y:cy-s*0.1},
+    {x:cx+s*0.14, y:cy-s*0.1},
+    (c,x,y,sz) => {
+      c.strokeStyle='#000'; c.lineWidth=1.5; c.beginPath();
+      c.arc(x, y+sz*0.22, sz*0.16, Math.PI+0.2, -0.2); c.stroke();
+    }
+  );
+}
+
+function drawHeart(ctx, s) {
+  ctx.fillStyle = '#fff';
+  const cx=s/2, cy=s/2+1;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy+s*0.3);
+  ctx.bezierCurveTo(cx-s*0.45, cy, cx-s*0.45, cy-s*0.3, cx, cy-s*0.08);
+  ctx.bezierCurveTo(cx+s*0.45, cy-s*0.3, cx+s*0.45, cy, cx, cy+s*0.3);
+  ctx.fill();
+}
+
+function drawThumbsup(ctx, s) {
+  ctx.fillStyle = '#fff';
+  const u = s/16;
+  // thumb
+  ctx.fillRect(3*u, 2*u, 4*u, 8*u);
+  ctx.fillRect(3*u, 2*u, 6*u, 4*u);
+  // fist
+  ctx.fillRect(1*u, 9*u, 9*u, 5*u);
+  ctx.fillRect(1*u, 13*u, 11*u, 1*u);
+}
+
+function drawStar(ctx, s) {
+  ctx.fillStyle = '#fff';
+  const cx=s/2, cy=s/2;
+  ctx.beginPath();
+  for (let i=0; i<5; i++) {
+    const a1 = (i*4*Math.PI/5) - Math.PI/2;
+    const a2 = ((i*4+2)*Math.PI/5) - Math.PI/2;
+    const r1=s*0.44, r2=s*0.18;
+    if (i===0) ctx.moveTo(cx+r1*Math.cos(a1), cy+r1*Math.sin(a1));
+    else ctx.lineTo(cx+r1*Math.cos(a1), cy+r1*Math.sin(a1));
+    ctx.lineTo(cx+r2*Math.cos(a2), cy+r2*Math.sin(a2));
+  }
+  ctx.closePath(); ctx.fill();
+}
+
+function drawLightning(ctx, s) {
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.moveTo(s*0.55, s*0.05);
+  ctx.lineTo(s*0.25, s*0.52);
+  ctx.lineTo(s*0.5, s*0.48);
+  ctx.lineTo(s*0.42, s*0.95);
+  ctx.lineTo(s*0.75, s*0.45);
+  ctx.lineTo(s*0.5, s*0.5);
+  ctx.closePath(); ctx.fill();
+}
+
+function drawSleep(ctx, s) {
+  const cx=s/2, cy=s/2;
+  drawCircleFace(ctx, s,
+    {x:cx-s*0.14, y:cy-s*0.06, r:1},
+    {x:cx+s*0.14, y:cy-s*0.06, r:1},
+    null
+  );
+  // ZZZ
+  ctx.fillStyle='#fff'; ctx.font=`bold ${s*0.22}px monospace`;
+  ctx.textAlign='center';
+  ctx.fillText('z', cx+s*0.28, cy-s*0.22);
+  ctx.font=`bold ${s*0.18}px monospace`;
+  ctx.fillText('z', cx+s*0.38, cy-s*0.32);
+  // closed eyes
+  ctx.strokeStyle='#000'; ctx.lineWidth=1.4;
+  ctx.beginPath(); ctx.moveTo(cx-s*0.2, cy-s*0.06); ctx.lineTo(cx-s*0.08, cy-s*0.06); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx+s*0.08, cy-s*0.06); ctx.lineTo(cx+s*0.2, cy-s*0.06); ctx.stroke();
+}
+
+function drawAngry(ctx, s) {
+  const cx=s/2, cy=s/2;
+  // face
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.arc(cx, cy, s*0.42, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle='#000';
+  ctx.beginPath(); ctx.arc(cx, cy, s*0.38, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.arc(cx, cy, s*0.34, 0, Math.PI*2); ctx.fill();
+  // angry eyebrows
+  ctx.strokeStyle='#000'; ctx.lineWidth=1.6;
+  ctx.beginPath(); ctx.moveTo(cx-s*0.22,cy-s*0.14); ctx.lineTo(cx-s*0.07,cy-s*0.06); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx+s*0.22,cy-s*0.14); ctx.lineTo(cx+s*0.07,cy-s*0.06); ctx.stroke();
+  // eyes
+  ctx.fillStyle='#000';
+  ctx.beginPath(); ctx.arc(cx-s*0.13, cy-s*0.02, 1.6, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+s*0.13, cy-s*0.02, 1.6, 0, Math.PI*2); ctx.fill();
+  // mouth
+  ctx.beginPath(); ctx.moveTo(cx-s*0.14, cy+s*0.16); ctx.lineTo(cx+s*0.14, cy+s*0.16); ctx.stroke();
+}
+
+function drawCool(ctx, s) {
+  const cx=s/2, cy=s/2;
+  drawCircleFace(ctx, s,
+    {x:cx-s*0.14, y:cy-s*0.1},
+    {x:cx+s*0.14, y:cy-s*0.1},
+    (c,x,y,sz) => {
+      c.strokeStyle='#000'; c.lineWidth=1.5; c.beginPath();
+      c.arc(x, y+sz*0.04, sz*0.16, 0.2, Math.PI-0.2); c.stroke();
+    }
+  );
+  // sunglasses
+  ctx.fillStyle='#000';
+  ctx.fillRect(cx-s*0.36, cy-s*0.18, s*0.28, s*0.16);
+  ctx.fillRect(cx+s*0.08, cy-s*0.18, s*0.28, s*0.16);
+  ctx.fillRect(cx-s*0.08, cy-s*0.14, s*0.16, s*0.06);
+  ctx.fillRect(cx-s*0.38, cy-s*0.12, s*0.04, s*0.06);
+  ctx.fillRect(cx+s*0.34, cy-s*0.12, s*0.04, s*0.06);
+}
+
+function drawWink(ctx, s) {
+  const cx=s/2, cy=s/2;
+  drawCircleFace(ctx, s,
+    {x:cx-s*0.14, y:cy-s*0.1},
+    {x:cx+s*0.14, y:cy-s*0.1},
+    (c,x,y,sz) => {
+      c.strokeStyle='#000'; c.lineWidth=1.5; c.beginPath();
+      c.arc(x, y+sz*0.04, sz*0.16, 0.2, Math.PI-0.2); c.stroke();
+    }
+  );
+  // wink right eye
+  ctx.strokeStyle='#000'; ctx.lineWidth=1.8;
+  ctx.beginPath();
+  ctx.moveTo(cx+s*0.08, cy-s*0.12);
+  ctx.lineTo(cx+s*0.2, cy-s*0.08);
+  ctx.stroke();
+}
+
+// ─── BUILD EMOTICON TILES ───
+function buildEmoteTiles(gridId, selectCallback) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+  grid.innerHTML = '';
+  EMOTICONS.forEach(em => {
+    const tile = document.createElement('div');
+    tile.className = 'emote-tile';
+    tile.dataset.id = em.id;
+
+    const prev = document.createElement('div');
+    prev.className = 'emote-preview';
+    const c = document.createElement('canvas');
+    c.width = 48; c.height = 48;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0,0,48,48);
+    em.draw(ctx, 48);
+    prev.appendChild(c);
+
+    const name = document.createElement('div');
+    name.className = 'emote-name';
+    name.textContent = em.name;
+
+    tile.appendChild(prev);
+    tile.appendChild(name);
+    tile.addEventListener('click', () => {
+      grid.querySelectorAll('.emote-tile').forEach(t => t.classList.remove('selected'));
+      tile.classList.add('selected');
+      if (selectCallback) selectCallback(em.id);
+    });
+    grid.appendChild(tile);
+  });
+
+  // Select first
+  if (grid.firstChild) {
+    grid.firstChild.classList.add('selected');
+    if (selectCallback) selectCallback(EMOTICONS[0].id);
+  }
+}
+
+// Build on DOM ready
+window.addEventListener('load', () => {
+  buildEmoteTiles('serial-emote-grid', id => { selectedSerialEmote = id; });
+});
+
+// ─── DOWNLOAD CONTROLLER ───
+function downloadController() {
+  fetch('./controller.html')
+    .then(r => r.ok ? r.text() : Promise.reject())
+    .then(html => triggerDL(html, 'ESP32_OLED_Controller.html'))
+    .catch(() => {
+      alert('File controller.html tidak ditemukan di server. Pastikan sudah di-upload ke GitHub Pages.');
+    });
+}
+function triggerDL(content, name) {
+  const b = new Blob([content], {type:'text/html'});
+  const u = URL.createObjectURL(b);
+  const a = document.createElement('a');
+  a.href=u; a.download=name; a.click();
+  URL.revokeObjectURL(u);
+}
+
+// ─── STATUS HELPERS ───
+function setFlashStatus(state, text) {
+  const el = document.getElementById('flash-status');
+  const dot = document.getElementById('flash-dot');
+  el.className = 'status-area' + (state === 'connected' ? ' connected' : state === 'error' ? ' error' : '');
+  dot.style.background = state === 'connected' ? 'var(--green)' : state === 'error' ? 'var(--red)' : 'var(--text3)';
+  document.getElementById('flash-status-text').textContent = text;
+}
+
+function setSidebarConn(connected, text) {
+  const badge = document.getElementById('sidebar-conn-badge');
+  badge.className = 'conn-badge' + (connected ? ' connected' : '');
+  document.getElementById('sidebar-conn-text').textContent = text;
+}
+
+function tlog(msg, type='') {
+  const t = document.getElementById('log-term');
+  const ts = new Date().toTimeString().slice(0,8);
+  const cls = {info:'t-info',success:'t-success',warn:'t-warn',error:'t-error'}[type]||'';
+  t.innerHTML += `<span class="${cls}">[${ts}] ${msg}</span>\n`;
+  t.scrollTop = t.scrollHeight;
+}
+
+function tlogSerial(msg, tx=false) {
+  const t = document.getElementById('serial-term');
+  t.innerHTML += `<span class="${tx?'t-warn':'t-success'}">${msg}</span>\n`;
+  t.scrollTop = t.scrollHeight;
+}
+
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+// Browser check
+window.addEventListener('load', () => {
+  if (!('serial' in navigator)) {
+    tlog('⚠  Web Serial tidak tersedia. Gunakan Chrome/Edge 89+', 'warn');
+  }
+});
+</script>
+</body>
+</html>
